@@ -154,30 +154,14 @@ contract OtcContract is Ownable {
         return otcKey;
     }
 
+    // creator 가 어떤 토큰, 수량을 넣을지 결정. customer는 어떤 토큰, 수량을 넣을지 미리 결정해서 같이 입력해야함
+    // 그 이후 creator, customer 각각 Deposit 
     function createOtc(address _customer, IERC20 _creatorToken, uint256 _creatorAmount, IERC20 _customerToken, uint256 _customerAmount) public {
         require(_customer != address(0), "Customer should not be address(0).");
         require(_creatorAmount > 0, "Amount should be higher than 0");
         require(_customerAmount > 0, "Amount should be higher than 0");
 
-        // // --------------- otc Key 생성 START ---------------
-        // uint256 creatorNum = uint256(uint160(msg.sender));
-        // // uint256 toNum = uint256(to);
-        // uint256 customerNum = uint256(uint160(_customer));
-
-        // // 숫자가 더 작은걸 앞에, 큰 걸 뒤에 배치
-        // address otcKey;
-        // if (creatorNum > customerNum) {
-        //     otcKey = address(uint160(uint256(keccak256(abi.encodePacked(_customer, msg.sender)))));
-        // } else {
-        //     // creatorNum <= customerNum
-        //     otcKey = address(uint160(uint256(keccak256(abi.encodePacked(msg.sender, _customer)))));
-        // }
-        // // key: (creator 주소 + customer address) -> 이렇게하면 OTC 생성자와 특정인은 단 하나의 OTC만 개설할 수 있다.
-        // // --------------- otc Key 생성 END ---------------
         address otcKey = getOtcKey(msg.sender, _customer);
-        
-        // creator 가 어떤 토큰, 수량을 넣을지 결정. customer는 어떤 토큰, 수량을 넣을지 미리 결정해서 같이 입력해야함
-        // 그 이후 creator, customer 각각 Deposit 
 
         // token0 과 token1에 둘다 token contract address 있으면 otcType = 1;
         _otc[otcKey].otcType = 1;
@@ -192,6 +176,8 @@ contract OtcContract is Ownable {
         
         _otc[otcKey].time = block.timestamp;
     }
+
+    
 
 
     // depositToken()
