@@ -28,6 +28,9 @@ contract OtcContract is Ownable {
     }
 
     mapping(uint => Payment) public payments;
+
+    IERC20 public currency;
+    address public collectionAddress;
     // ------ 삭제 예정 END ------
 
     struct Otc {
@@ -45,18 +48,16 @@ contract OtcContract is Ownable {
         bool tradeApproved1;
         bool refundApproved1;
 
-        bool cancelApproved;
+        bool completed;
         uint256 time;
     }
 
     // mapping(address => mapping(uint256 => Otc)) private _otc;
     mapping(address => Otc) private _otc;
-
-    // completedOtc
     mapping(uint256 => Otc) public _completedOtc;
 
-    IERC20 public currency;
-    address public collectionAddress;
+    mapping(address => address) public _customerOtcKey;
+
     // Webshop public webshop;
 
     // function Escrow(IERC20 _currency, address _collectionAddress) public {
@@ -135,7 +136,8 @@ contract OtcContract is Ownable {
     }
 
     function getOtcKey(address _creator, address _customer) internal returns (address) {
-        // --------------- otc Key 생성 START ---------------
+        // key: (creator 주소 + customer address) -> 이렇게하면 OTC 생성자와 특정인은 단 하나의 OTC만 개설할 수 있다.
+        
         uint256 creatorNum = uint256(uint160(_creator));
         // uint256 toNum = uint256(to);
         uint256 customerNum = uint256(uint160(_customer));
@@ -148,9 +150,7 @@ contract OtcContract is Ownable {
             // creatorNum <= customerNum
             otcKey = address(uint160(uint256(keccak256(abi.encodePacked(_creator, _customer)))));
         }
-        // key: (creator 주소 + customer address) -> 이렇게하면 OTC 생성자와 특정인은 단 하나의 OTC만 개설할 수 있다.
-        // --------------- otc Key 생성 END ---------------
-        
+
         return otcKey;
     }
 
@@ -160,8 +160,14 @@ contract OtcContract is Ownable {
         require(_customer != address(0), "Customer should not be address(0).");
         require(_creatorAmount > 0, "Amount should be higher than 0");
         require(_customerAmount > 0, "Amount should be higher than 0");
+        // 이미 열린 otc가 유효 시간 이내인가? (15분 제한) or 완료된 것인가?
+        require(_otc[msg.sender].time + 15 * 60 < block.timestamp || _otc[msg.sender].completed == true, "Already exists OTC");
 
-        address otcKey = getOtcKey(msg.sender, _customer);
+        // address otcKey = getOtcKey(msg.sender, _customer);
+        address otcKey = msg.sender;
+
+        // otcKey와 customer 주소 연결
+        _customerOtcKey[_customer] = msg.sender;
 
         // token0 과 token1에 둘다 token contract address 있으면 otcType = 1;
         _otc[otcKey].otcType = 1;
@@ -177,7 +183,63 @@ contract OtcContract is Ownable {
         _otc[otcKey].time = block.timestamp;
     }
 
-    
+    // function receive() payable public {
+    //     // otc 컨트랙트에 토큰을 보낸 유저가 creator 인지 customer 인지 찾기
+
+    //     bool findOtcUserFlag = false;
+    //     bytes32 userType;    // creator or customer
+    //     address otcKey;
+        
+    //     address customerOtcKey = _customerOtcKey[msg.sender];
+    //     if (customerOtcKey != address(0)) {
+    //         // _otc[customerOtcKey].time 
+    //         if (_otc[customerOtcKey].user1 == msg.sender) {
+    //             // customer 가 맞다
+    //             otcKey = customerOtcKey;
+    //             userType = "customer";
+                
+    //             findOtcUserFlag = true;
+    //         }
+    //     }
+
+    //     if (!findOtcUserFlag) {
+    //         address creatorOtcKey = msg.sender;
+    //         if (_otc[creatorOtcKey].user0 == msg.sender) {
+    //             // creator 가 맞다
+    //             otcKey = creatorOtcKey;
+    //             userType = "creator";
+
+    //             findOtcUserFlag = true;
+    //         }
+    //     }
+
+    //     require(findOtcUserFlag, "Check if the otc is not set");
+        
+    //     // 유효한 otc 인가?
+    //     // 이미 열린 otc가 유효 시간 이내인가? (15분 제한) or 완료된 것인가? -> 유효기간 이내, 완료되지 않았을 때 deposit 가능
+    //     require(_otc[otcKey].time + 15 * 60 >= block.timestamp || _otc[otcKey].completed == false, "There is no an opened OTC.");
+        
+    //     if (userType == "creator") {
+
+    //     } else if (userType == "customer") {
+            
+    //     }
+    // }
+
+    function deposit(uint _amount, IERC20 token) public payable {
+        // Set the minimum amount to 1 token (in this case I'm using LINK token)
+        uint _minAmount = 1*(10**18);
+        // Here we validate if sended USDT for example is higher than 50, and if so we increment the counter
+        require(_amount >= _minAmount, "Amount less than minimum amount");
+        // I call the function of IERC20 contract to transfer the token from the user (that he's interacting with the contract) to
+        // the smart contract  
+        IERC20(token).transferFrom(msg.sender, address(this), _amount);
+    }
+
+    // This function allow you to see how many tokens have the smart contract 
+    function getContractBalance(IERC20 token) public onlyOwner view returns(uint){
+        return IERC20(token).balanceOf(address(this));
+    }
 
 
     // depositToken()
