@@ -45,12 +45,14 @@ contract OtcContract is Ownable {
         IERC20 token0;
         uint amount0;
         bool deposited0;
+        bool claimed0;
         bool refunded0;
         
         address account1;
         IERC20 token1;
         uint amount1;  
         bool deposited1;
+        bool claimed1;
         bool refunded1;
 
         bool completed;
@@ -71,6 +73,7 @@ contract OtcContract is Ownable {
     // 3. Deposit
     // 4. Confirm
     // 5. Claim
+    // 6. Cancel(Refund)
 
     // * OTC 프로세스(위의 단계에서 액션을 조합해서 유저가 최소한의 버튼을 누르도록 하자
     // 1) Create OTC
@@ -159,12 +162,6 @@ contract OtcContract is Ownable {
         uint _minAmount = 1*(10**18);
         require(_depositAmount >= _minAmount, "_depositAmount less than minimum amount");
         
-        // if (depositToken == IERC20(address(0))) {
-        //     // native coin
-        // } else {
-        //     // ERC20
-        // }
-        
         address otcKey = createOtcKey(_account0, _account1);
 
         // uint256 msgSenderAccountType;  // 0: creator, 1: customer
@@ -212,6 +209,34 @@ contract OtcContract is Ownable {
             _otc[otcKey].deposited1 = true;
         }
     }
+
+    // claim
+    // TODO: 양쪽이 모두 Deposit 됐나?
+    // account0 은 token1, amount1 을 가져가고 account1은 token0, amount0 을 가져가야 한다.
+    // claimed0 = true;
+    // claimed1 = true;
+    
+    
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+    
     
     // function receive() payable public {
     //     // 0: creator
