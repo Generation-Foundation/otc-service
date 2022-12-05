@@ -192,33 +192,25 @@ contract OtcContract is Ownable {
         }
     }
 
-    // address public testAddress0;
-    // address public testAddress1;
-    // uint256 public testAmount;
-
     function receiveETH(address _addr) public payable {
-        // (bool success, ) = _addr.call{value: msg.value}("");
-        // testAddress0 = _addr;
-        // testAddress1 = msg.sender;
-        // testAmount = msg.value;
-        
         address otcKey = createOtcKey(_addr, msg.sender);
 
         // msg.sender 가 creator 인지 customer 인지 확인하기
         if (_otc[otcKey].account0 == msg.sender) {
             // creator
-            // token0 이 zero address 인지 확인
+            // token0 이 zero address 인지 확인(아니면 잘못 보낸것..)
+            require(_otc[otcKey].token0 == IERC20(address(0)), "OTC token0 does not match.");
+            require(_otc[otcKey].amount0 == msg.value, "OTC amount0 does not match.");
             
-            
+            _otc[otcKey].deposited0 = true;
         } else if (_otc[otcKey].account1 == msg.sender) {
             // customer
             // token1 이 zero address 인지 확인
+            require(_otc[otcKey].token1 == IERC20(address(0)), "OTC token1 does not match.");
+            require(_otc[otcKey].amount1 == msg.value, "OTC amount1 does not match.");
             
+            _otc[otcKey].deposited1 = true;
         }
-
-        
-
-
     }
     
     // function receive() payable public {
