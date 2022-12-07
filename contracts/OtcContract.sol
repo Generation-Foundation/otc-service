@@ -14,33 +14,12 @@ import "@openzeppelin/contracts/access/Ownable.sol";
 contract OtcContract is Ownable {
     using SafeERC20 for IERC20;
 
-    // event Convert(address indexed from, uint256 amount);
-
-    // ------ 삭제 예정 START ------
-    enum PaymentStatus { Pending, Completed, Refunded }
-
-    event PaymentCreation(uint indexed orderId, address indexed customer, uint value);
-    event PaymentCompletion(uint indexed orderId, address indexed customer, uint value, PaymentStatus status);
-
-    struct Payment {
-        address customer;
-        uint value;
-        PaymentStatus status;
-        bool refundApproved;
-    }
-
-    mapping(uint => Payment) public payments;
-
-    IERC20 public currency;
-    address public collectionAddress;
-    // ------ 삭제 예정 END ------
-
-    enum OTCStatus { Pending, Deposited, Completed, Refunded }
+    enum OTCStatus { Pending, Deposited, Completed, Canceled }
 
     event OTCCreated(address indexed _account0, address indexed _account1, IERC20 token0, IERC20 token1, uint256 _amount0, uint256 _amount1, OTCStatus status);
     event OTCDeposited(address indexed _account0, address indexed _account1, IERC20 token0, IERC20 token1, uint256 _amount0, uint256 _amount1, OTCStatus status);
     event OTCCompleted(address indexed _account0, address indexed _account1, IERC20 token0, IERC20 token1, uint256 _amount0, uint256 _amount1, OTCStatus status);
-    event OTCRefunded(address indexed _account0, address indexed _account1, IERC20 token0, IERC20 token1, uint256 _amount0, uint256 _amount1, OTCStatus status);
+    event OTCCanceled(address indexed _account0, address indexed _account1, IERC20 token0, IERC20 token1, uint256 _amount0, uint256 _amount1, OTCStatus status);
     
     // otcType
     // 1: "OTC_TYPE_TOKEN"
@@ -57,26 +36,28 @@ contract OtcContract is Ownable {
         uint amount0;
         bool deposited0;
         bool claimed0;
-        bool refunded0;
+        bool canceled0;
         
         address account1;
         IERC20 token1;
         uint amount1;  
         bool deposited1;
         bool claimed1;
-        bool refunded1;
+        bool canceled1;
 
         bool completed;
         uint256 time;
     }
 
-    // mapping(address => mapping(uint256 => Otc)) private _otc;
     mapping(address => Otc) private _otc;
-    // mapping(uint256 => Otc) public _completedOtc;
     Otc[] public _completedOtc;
 
     function completedOtcLength() public view returns (uint256) {
         return _completedOtc.length;
+    }
+
+    function getOtcHistory(uint256 _index) public view returns (Otc memory) {
+        return _completedOtc[_index];
     }
 
     // * 유저가 하는 액션
@@ -129,14 +110,9 @@ contract OtcContract is Ownable {
         address _account0 = msg.sender;
 
         address otcKey = getOtcKey(_account0, _account1);
-
-        // TODO: 시간 60분 제한
-        // TODO: 기존에 완료되지 않은 OTC가 존재하는가?
-
-
-
-        // _otc[otcKey].status == OTCStatus.Pending ?
-        // require(_otc[otcKey].status != OTCStatus.Pending, "");
+        
+        // 기존에 완료되지 않은 OTC가 존재하는가? 그러면 create 할 수 없음: Pending 이면 create 할 수 없음
+        require(_otc[otcKey].status != OTCStatus.Pending, "There is a valid OTC that already created.");
 
         if (keccak256(bytes(_otcType)) == keccak256(bytes("OTC_TYPE_TOKEN"))) {
             _otc[otcKey].otcType = 1;
@@ -182,21 +158,20 @@ contract OtcContract is Ownable {
         // 1: customer
 
         uint _minAmount = 1*(10**18);
-        require(_depositAmount >= _minAmount, "_depositAmount less than minimum amount");
+        require(_depositAmount >= _minAmount, "_depositAmount less than minimum amount.");
         
         address otcKey = getOtcKey(_account0, _account1);
 
-        // TODO: Pending 상태인지 체크
-        // require(_otc[otcKey].status == OTCStatus.Pending, "");
-        
-        
+        // Pending 상태인지 체크
+        require(_otc[otcKey].status == OTCStatus.Pending, "You need to create OTC before depositing.");
 
         // uint256 msgSenderAccountType;  // 0: creator, 1: customer
         
         // msg.sender 가 creator 인지 customer 인지 확인하기
         if (_otc[otcKey].account0 == msg.sender) {
             // creator
-            // msgSenderAccountType = 0;
+            // 이미 deposit 한 것인가?
+            require(!_otc[otcKey].deposited0, "_account0 is already deposited.");
             
             // depositToken 이  creator token 이랑 일치하는가?
             require(_otc[otcKey].token0 == depositToken, "OTC token0 does not match.");
@@ -210,7 +185,8 @@ contract OtcContract is Ownable {
             }
         } else if (_otc[otcKey].account1 == msg.sender) {
             // customer
-            // msgSenderAccountType = 1;
+            // 이미 deposit 한 것인가?
+            require(!_otc[otcKey].deposited1, "_account1 is already deposited.");
 
             require(_otc[otcKey].token1 == depositToken, "OTC token1 does not match.");
             require(_otc[otcKey].amount1 == _depositAmount, "OTC amount1 does not match.");
@@ -227,12 +203,15 @@ contract OtcContract is Ownable {
     function receiveETH(address _addr) public payable {
         address otcKey = getOtcKey(_addr, msg.sender);
 
-        // TODO: Pending 상태인지 체크
-        
+        // Pending 상태인지 체크
+        require(_otc[otcKey].status == OTCStatus.Pending, "You need to create OTC before depositing.");
 
         // msg.sender 가 creator 인지 customer 인지 확인하기
         if (_otc[otcKey].account0 == msg.sender) {
             // creator
+            // 이미 deposit 한 것인가?
+            require(!_otc[otcKey].deposited0, "_account0 is already deposited.");
+
             // token0 이 zero address 인지 확인(아니면 잘못 보낸것..)
             require(_otc[otcKey].token0 == IERC20(address(0)), "OTC token0 does not match.");
             require(_otc[otcKey].amount0 == msg.value, "OTC amount0 does not match.");
@@ -245,6 +224,9 @@ contract OtcContract is Ownable {
 
         } else if (_otc[otcKey].account1 == msg.sender) {
             // customer
+            // 이미 deposit 한 것인가?
+            require(!_otc[otcKey].deposited1, "_account1 is already deposited.");
+
             // token1 이 zero address 인지 확인
             require(_otc[otcKey].token1 == IERC20(address(0)), "OTC token1 does not match.");
             require(_otc[otcKey].amount1 == msg.value, "OTC amount1 does not match.");
@@ -262,6 +244,8 @@ contract OtcContract is Ownable {
         require(_account1 != address(0), "_account1 cannot be 0 address");
 
         address otcKey = getOtcKey(_account0, _account1);
+
+        require(_otc[otcKey].status == OTCStatus.Deposited, "You need to deposit token before claiming.");
         
         // 양쪽이 모두 Deposit 됐나?
         require(_otc[otcKey].deposited0 && _otc[otcKey].deposited1, "Both deposited0 and deposited1 are not completed");
@@ -283,16 +267,9 @@ contract OtcContract is Ownable {
             // 2: "OTC_TYPE_NFT"
             // 3: "OTC_TYPE_FILE"
             if (_otc[otcKey].otcType == 1) {
-                if (_otc[otcKey].token1 == IERC20(address(0))) {
-                    // native coin
-                    payable(_otc[otcKey].account0).transfer(_otc[otcKey].amount1);
-                } else {
-                    // ERC20
-                    (_otc[otcKey].token1).safeTransfer(msg.sender, _otc[otcKey].amount1);
-                }
-
                 _otc[otcKey].claimed0 = true;
                 if (_otc[otcKey].claimed1) {
+                    _otc[otcKey].status = OTCStatus.Completed;
                     // _completedOtc 에 기록용으로 추가
                     _completedOtc.push(Otc(
                         _otc[otcKey].otcType,
@@ -302,17 +279,25 @@ contract OtcContract is Ownable {
                         _otc[otcKey].amount0,
                         _otc[otcKey].deposited0,
                         _otc[otcKey].claimed0,
-                        _otc[otcKey].refunded0,
+                        _otc[otcKey].canceled0,
                         _otc[otcKey].account1,
                         _otc[otcKey].token1,
                         _otc[otcKey].amount1,
                         _otc[otcKey].deposited1,
                         _otc[otcKey].claimed1,
-                        _otc[otcKey].refunded1,
+                        _otc[otcKey].canceled1,
                         _otc[otcKey].completed,
                         _otc[otcKey].time
                     ));
                     emit OTCCompleted(_otc[otcKey].account0, _otc[otcKey].account1, _otc[otcKey].token0, _otc[otcKey].token1, _otc[otcKey].amount0, _otc[otcKey].amount1, OTCStatus.Completed);
+                }
+
+                if (_otc[otcKey].token1 == IERC20(address(0))) {
+                    // native coin
+                    payable(_otc[otcKey].account0).transfer(_otc[otcKey].amount1);
+                } else {
+                    // ERC20
+                    (_otc[otcKey].token1).safeTransfer(_otc[otcKey].account0, _otc[otcKey].amount1);
                 }
             } else {
                 require(false, "This OTC Type is invalid.");
@@ -320,18 +305,10 @@ contract OtcContract is Ownable {
 
         } else if (_otc[otcKey].account1 == msg.sender) {
             // customer: token0, amount0 을 가져가야 한다.
-
             if (_otc[otcKey].otcType == 1) {
-                if (_otc[otcKey].token0 == IERC20(address(0))) {
-                    // native coin
-                    payable(_otc[otcKey].account1).transfer(_otc[otcKey].amount0);
-                } else {
-                    // ERC20
-                    (_otc[otcKey].token0).safeTransfer(msg.sender, _otc[otcKey].amount0);
-                }
-
                 _otc[otcKey].claimed1 = true;
                 if (_otc[otcKey].claimed0) {
+                    _otc[otcKey].status = OTCStatus.Completed;
                     _completedOtc.push(Otc(
                         _otc[otcKey].otcType,
                         _otc[otcKey].status,
@@ -340,17 +317,25 @@ contract OtcContract is Ownable {
                         _otc[otcKey].amount0,
                         _otc[otcKey].deposited0,
                         _otc[otcKey].claimed0,
-                        _otc[otcKey].refunded0,
+                        _otc[otcKey].canceled0,
                         _otc[otcKey].account1,
                         _otc[otcKey].token1,
                         _otc[otcKey].amount1,
                         _otc[otcKey].deposited1,
                         _otc[otcKey].claimed1,
-                        _otc[otcKey].refunded1,
+                        _otc[otcKey].canceled1,
                         _otc[otcKey].completed,
                         _otc[otcKey].time
                     ));
                     emit OTCCompleted(_otc[otcKey].account0, _otc[otcKey].account1, _otc[otcKey].token0, _otc[otcKey].token1, _otc[otcKey].amount0, _otc[otcKey].amount1, OTCStatus.Completed);
+                }
+
+                if (_otc[otcKey].token0 == IERC20(address(0))) {
+                    // native coin
+                    payable(_otc[otcKey].account1).transfer(_otc[otcKey].amount0);
+                } else {
+                    // ERC20
+                    (_otc[otcKey].token0).safeTransfer(_otc[otcKey].account1, _otc[otcKey].amount0);
                 }
             } else {
                 require(false, "This OTC Type is invalid.");
@@ -359,11 +344,62 @@ contract OtcContract is Ownable {
     }
 
     // Cancel (Refund)
+    function cancelOtc(address _account0, address _account1) public {
+        require(_account0 != address(0), "_account0 cannot be 0 address");
+        require(_account1 != address(0), "_account1 cannot be 0 address");
 
-    // File 교환을 어떻게 할지? 고민...
+        address otcKey = getOtcKey(_account0, _account1);
 
+        require(_otc[otcKey].status == OTCStatus.Pending, "OTC is not in progress.");
+        
+        // creator 또는 customer 중에 deposit 된 게 있는가?
+        // -> 둘 다 deposit 된 경우는 complete 로 넘어가게 된다
+        if (_otc[otcKey].deposited0) {
+            // 이미 cancel 된 것인가?
+            require(!_otc[otcKey].canceled0, "_account0 is already canceled.");
 
+            _otc[otcKey].canceled0 = true;
+            if (_otc[otcKey].canceled1) {
+                _otc[otcKey].status = OTCStatus.Canceled;
+            }
 
+            // account0 -> token0, amount0 을 돌려준다
+            if (_otc[otcKey].token0 == IERC20(address(0))) {
+                // native coin
+                payable(_otc[otcKey].account0).transfer(_otc[otcKey].amount0);
+            } else {
+                // ERC20
+                (_otc[otcKey].token0).safeTransfer(_otc[otcKey].account0, _otc[otcKey].amount0);
+            }
+
+        } else if (_otc[otcKey].deposited1) {
+            require(!_otc[otcKey].canceled1, "_account1 is already canceled.");
+
+            _otc[otcKey].canceled1 = true;
+            if (_otc[otcKey].canceled0) {
+                _otc[otcKey].status = OTCStatus.Canceled;
+            }
+
+            // account1 -> token1, amount1 을 돌려준다
+            if (_otc[otcKey].token1 == IERC20(address(0))) {
+                // native coin
+                payable(_otc[otcKey].account1).transfer(_otc[otcKey].amount1);
+            } else {
+                // ERC20
+                (_otc[otcKey].token1).safeTransfer(_otc[otcKey].account1, _otc[otcKey].amount1);
+            }
+        } else {
+            require(!_otc[otcKey].canceled0, "_account0 is already canceled.");
+            require(!_otc[otcKey].canceled1, "_account1 is already canceled.");
+
+            _otc[otcKey].canceled0 = true;
+            _otc[otcKey].canceled1 = true;
+
+            _otc[otcKey].status = OTCStatus.Canceled;
+        }
+    }
+
+    // TODO: File 교환을 어떻게 할지? 고민...
 
 
 
