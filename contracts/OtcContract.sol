@@ -21,6 +21,8 @@ contract OtcContract is Ownable {
     event OTCCompleted(address indexed _account0, address indexed _account1, IERC20 token0, IERC20 token1, uint256 _amount0, uint256 _amount1, OTCStatus status);
     event OTCCanceled(address indexed _account0, address indexed _account1, IERC20 token0, IERC20 token1, uint256 _amount0, uint256 _amount1, OTCStatus status);
     
+    event Recovered(address token, uint256 amount);
+
     // otcType
     // 1: "OTC_TYPE_TOKEN"
     // 2: "OTC_TYPE_NFT"
@@ -137,6 +139,8 @@ contract OtcContract is Ownable {
 
         emit OTCCreated(_account0, _account1, _token0, _token1, _amount0, _amount1, OTCStatus.Pending);
     }
+
+    
 
     // function deposit(uint _amount, IERC20 token) public payable {
     //     // Set the minimum amount to 1 token (in this case I'm using LINK token)
@@ -406,11 +410,16 @@ contract OtcContract is Ownable {
         }
     }
 
+    function recoverERC20(address token, uint amount) public onlyOwner {
+        IERC20(token).safeTransfer(msg.sender, amount);
+        emit Recovered(token, amount);
+    }
+
+    function recoverETH() public onlyOwner {
+        payable(msg.sender).transfer(address(this).balance);
+    }
+
     // TODO: File 교환을 어떻게 할지? 고민...
-
-
-
-
 
 
 
