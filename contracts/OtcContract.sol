@@ -47,7 +47,6 @@ contract OtcContract is Ownable {
         bool claimed1;
         bool canceled1;
 
-        bool completed;
         uint256 time;
     }
 
@@ -281,10 +280,19 @@ contract OtcContract is Ownable {
                         _otc[otcKey].deposited1,
                         _otc[otcKey].claimed1,
                         _otc[otcKey].canceled1,
-                        _otc[otcKey].completed,
                         _otc[otcKey].time
                     ));
                     emit OTCCompleted(_otc[otcKey].account0, _otc[otcKey].account1, _otc[otcKey].token0, _otc[otcKey].token1, _otc[otcKey].amount0, _otc[otcKey].amount1, OTCStatus.Completed);
+
+                    // 초기화
+                    _otc[otcKey].amount0 = 0;
+                    _otc[otcKey].amount1 = 0;
+                    _otc[otcKey].deposited0 = false;
+                    _otc[otcKey].deposited1 = false;
+                    _otc[otcKey].claimed0 = false;
+                    _otc[otcKey].claimed1 = false;
+                    _otc[otcKey].canceled0 = false;
+                    _otc[otcKey].canceled1 = false;
                 }
 
                 if (_otc[otcKey].token1 == IERC20(address(0))) {
@@ -294,6 +302,7 @@ contract OtcContract is Ownable {
                     // ERC20
                     (_otc[otcKey].token1).safeTransfer(_otc[otcKey].account0, _otc[otcKey].amount1);
                 }
+
             } else {
                 require(false, "This OTC Type is invalid.");
             }
@@ -319,10 +328,19 @@ contract OtcContract is Ownable {
                         _otc[otcKey].deposited1,
                         _otc[otcKey].claimed1,
                         _otc[otcKey].canceled1,
-                        _otc[otcKey].completed,
                         _otc[otcKey].time
                     ));
                     emit OTCCompleted(_otc[otcKey].account0, _otc[otcKey].account1, _otc[otcKey].token0, _otc[otcKey].token1, _otc[otcKey].amount0, _otc[otcKey].amount1, OTCStatus.Completed);
+                
+                    // 초기화
+                    _otc[otcKey].amount0 = 0;
+                    _otc[otcKey].amount1 = 0;
+                    _otc[otcKey].deposited0 = false;
+                    _otc[otcKey].deposited1 = false;
+                    _otc[otcKey].claimed0 = false;
+                    _otc[otcKey].claimed1 = false;
+                    _otc[otcKey].canceled0 = false;
+                    _otc[otcKey].canceled1 = false;
                 }
 
                 if (_otc[otcKey].token0 == IERC20(address(0))) {
@@ -369,6 +387,16 @@ contract OtcContract is Ownable {
 
             emit OTCCanceled(_otc[otcKey].account0, _otc[otcKey].account1, _otc[otcKey].token0, _otc[otcKey].token1, _otc[otcKey].amount0, _otc[otcKey].amount1, OTCStatus.Completed);
 
+            // 초기화
+            _otc[otcKey].amount0 = 0;
+            _otc[otcKey].amount1 = 0;
+            _otc[otcKey].deposited0 = false;
+            _otc[otcKey].deposited1 = false;
+            _otc[otcKey].claimed0 = false;
+            _otc[otcKey].claimed1 = false;
+            _otc[otcKey].canceled0 = false;
+            _otc[otcKey].canceled1 = false;
+
         } else if (_otc[otcKey].deposited1) {
             require(!_otc[otcKey].canceled1, "_account1 is already canceled.");
 
@@ -388,6 +416,16 @@ contract OtcContract is Ownable {
 
             emit OTCCanceled(_otc[otcKey].account0, _otc[otcKey].account1, _otc[otcKey].token0, _otc[otcKey].token1, _otc[otcKey].amount0, _otc[otcKey].amount1, OTCStatus.Completed);
 
+            // 초기화
+            _otc[otcKey].amount0 = 0;
+            _otc[otcKey].amount1 = 0;
+            _otc[otcKey].deposited0 = false;
+            _otc[otcKey].deposited1 = false;
+            _otc[otcKey].claimed0 = false;
+            _otc[otcKey].claimed1 = false;
+            _otc[otcKey].canceled0 = false;
+            _otc[otcKey].canceled1 = false;
+
         } else {
             require(!_otc[otcKey].canceled0, "_account0 is already canceled.");
             require(!_otc[otcKey].canceled1, "_account1 is already canceled.");
@@ -398,6 +436,16 @@ contract OtcContract is Ownable {
             _otc[otcKey].status = OTCStatus.Canceled;
 
             emit OTCCanceled(_otc[otcKey].account0, _otc[otcKey].account1, _otc[otcKey].token0, _otc[otcKey].token1, _otc[otcKey].amount0, _otc[otcKey].amount1, OTCStatus.Completed);
+        
+            // 초기화
+            _otc[otcKey].amount0 = 0;
+            _otc[otcKey].amount1 = 0;
+            _otc[otcKey].deposited0 = false;
+            _otc[otcKey].deposited1 = false;
+            _otc[otcKey].claimed0 = false;
+            _otc[otcKey].claimed1 = false;
+            _otc[otcKey].canceled0 = false;
+            _otc[otcKey].canceled1 = false;
         }
     }
 
