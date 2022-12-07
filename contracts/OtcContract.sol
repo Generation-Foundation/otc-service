@@ -372,6 +372,8 @@ contract OtcContract is Ownable {
                 (_otc[otcKey].token0).safeTransfer(_otc[otcKey].account0, _otc[otcKey].amount0);
             }
 
+            emit OTCCanceled(_otc[otcKey].account0, _otc[otcKey].account1, _otc[otcKey].token0, _otc[otcKey].token1, _otc[otcKey].amount0, _otc[otcKey].amount1, OTCStatus.Completed);
+
         } else if (_otc[otcKey].deposited1) {
             require(!_otc[otcKey].canceled1, "_account1 is already canceled.");
 
@@ -388,6 +390,9 @@ contract OtcContract is Ownable {
                 // ERC20
                 (_otc[otcKey].token1).safeTransfer(_otc[otcKey].account1, _otc[otcKey].amount1);
             }
+
+            emit OTCCanceled(_otc[otcKey].account0, _otc[otcKey].account1, _otc[otcKey].token0, _otc[otcKey].token1, _otc[otcKey].amount0, _otc[otcKey].amount1, OTCStatus.Completed);
+
         } else {
             require(!_otc[otcKey].canceled0, "_account0 is already canceled.");
             require(!_otc[otcKey].canceled1, "_account1 is already canceled.");
@@ -396,6 +401,8 @@ contract OtcContract is Ownable {
             _otc[otcKey].canceled1 = true;
 
             _otc[otcKey].status = OTCStatus.Canceled;
+
+            emit OTCCanceled(_otc[otcKey].account0, _otc[otcKey].account1, _otc[otcKey].token0, _otc[otcKey].token1, _otc[otcKey].amount0, _otc[otcKey].amount1, OTCStatus.Completed);
         }
     }
 
