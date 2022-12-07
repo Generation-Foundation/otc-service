@@ -190,8 +190,11 @@ contract OtcContract is Ownable {
         }
     }
 
-    function receiveETH(address _addr) public payable {
-        address otcKey = getOtcKey(_addr, msg.sender);
+    function receiveETH(address _account0, address _account1) public payable {
+        uint _minAmount = 1*(10**18);
+        require(msg.value >= _minAmount, "msg.value less than minimum amount.");
+
+        address otcKey = getOtcKey(_account0, _account1);
 
         // Pending 상태인지 체크
         require(_otc[otcKey].status == OTCStatus.Pending, "You need to create OTC before depositing.");
@@ -226,6 +229,8 @@ contract OtcContract is Ownable {
                 _otc[otcKey].status = OTCStatus.Deposited;
                 emit OTCDeposited(_otc[otcKey].account0, _otc[otcKey].account1, _otc[otcKey].token0, _otc[otcKey].token1, _otc[otcKey].amount0, _otc[otcKey].amount1, OTCStatus.Deposited);
             }
+        } else {
+            require(false, "Both _account0 and _account1 cannot receive ETH.");
         }
     }
 
