@@ -63,6 +63,8 @@ contract OtcContract is Ownable {
         return _completedOtc[_index];
     }
 
+    receive() external payable {}
+
     // * 유저가 하는 액션
     // 1. (OTC 생성자) Create
     // 2. Approve
