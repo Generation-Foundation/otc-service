@@ -14,7 +14,7 @@ import "@openzeppelin/contracts/access/Ownable.sol";
 contract OtcContract is Ownable {
     using SafeERC20 for IERC20;
 
-    enum OTCStatus { Pending, Deposited, Completed, Canceled }
+    enum OTCStatus { init, Pending, Deposited, Completed, Canceled }
 
     event OTCCreated(address indexed _account0, address indexed _account1, IERC20 token0, IERC20 token1, uint256 _amount0, uint256 _amount1, OTCStatus status);
     event OTCDeposited(address indexed _account0, address indexed _account1, IERC20 token0, IERC20 token1, uint256 _amount0, uint256 _amount1, OTCStatus status);
@@ -342,6 +342,14 @@ contract OtcContract is Ownable {
                     _otc[otcKey].canceled0 = false;
                     _otc[otcKey].canceled1 = false;
                 }
+
+                // if (_otc[otcKey].token1 == IERC20(address(0))) {
+                //     // native coin
+                //     payable(_otc[otcKey].account0).transfer(_otc[otcKey].amount1);
+                // } else {
+                //     // ERC20
+                //     (_otc[otcKey].token1).safeTransfer(_otc[otcKey].account0, _otc[otcKey].amount1);
+                // }
 
                 if (_otc[otcKey].token0 == IERC20(address(0))) {
                     // native coin
