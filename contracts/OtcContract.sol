@@ -66,14 +66,14 @@ contract OtcContract is Ownable {
     // 1. (OTC 생성자) Create
     // 2. Approve
     // 3. Deposit
-    // 4. Confirm
-    // 5. Claim
+    // 4. Confirm(x)
+    // 5. Claim(x)
     // 6. Cancel(Refund)
 
     // * OTC 프로세스(위의 단계에서 액션을 조합해서 유저가 최소한의 버튼을 누르도록 하자
     // 1) Create OTC
-    // 2) Deposit(Approve + Deposit)
-    // 3) Confirm(Confirm + Claim)
+    // 2) Deposit(Approve + Deposit + Complete + Claim)
+    // 3) Confirm(Confirm + Claim)(x)
 
     // * 교환할 대상
     // 1) Native Coin(ETH, GEN, MATIC 등...)
@@ -134,7 +134,7 @@ contract OtcContract is Ownable {
         _otc[otcKey].amount1 = _amount1;
 
         _otc[otcKey].time = block.timestamp;
-
+        
         _otc[otcKey].status = OTCStatus.Pending;
 
         emit OTCCreated(_account0, _account1, _token0, _token1, _amount0, _amount1, OTCStatus.Pending);
@@ -173,7 +173,7 @@ contract OtcContract is Ownable {
                 // ---------------------------------- 완료 처리 START ----------------------------------
                 _otc[otcKey].status = OTCStatus.Completed;
                 emit OTCCompleted(_otc[otcKey].account0, _otc[otcKey].account1, _otc[otcKey].token0, _otc[otcKey].token1, _otc[otcKey].amount0, _otc[otcKey].amount1, OTCStatus.Completed);
-                // _completedOtc 에 기록용으로 추가
+                
                 _completedOtc.push(Otc(
                     _otc[otcKey].otcType,
                     _otc[otcKey].status,
@@ -189,14 +189,6 @@ contract OtcContract is Ownable {
                     _otc[otcKey].canceled1,
                     _otc[otcKey].time
                 ));
-
-                // 초기화
-                _otc[otcKey].amount0 = 0;
-                _otc[otcKey].amount1 = 0;
-                _otc[otcKey].deposited0 = false;
-                _otc[otcKey].deposited1 = false;
-                _otc[otcKey].canceled0 = false;
-                _otc[otcKey].canceled1 = false;
                 // ---------------------------------- 완료 처리 END ----------------------------------
 
                 // TODO: deposited0 && deposited1 이 true 면 자동 claim 하기
@@ -219,6 +211,15 @@ contract OtcContract is Ownable {
                     (_otc[otcKey].token0).safeTransfer(_otc[otcKey].account1, _otc[otcKey].amount0);
                 }
                 // ---------------------------------- 자동 claim END ----------------------------------
+
+                // ---------------------------------- 초기화 START ----------------------------------
+                _otc[otcKey].amount0 = 0;
+                _otc[otcKey].amount1 = 0;
+                _otc[otcKey].deposited0 = false;
+                _otc[otcKey].deposited1 = false;
+                _otc[otcKey].canceled0 = false;
+                _otc[otcKey].canceled1 = false;
+                // ---------------------------------- 초기화 END ----------------------------------
             }
         } else if (_otc[otcKey].account1 == msg.sender) {
             // customer
@@ -237,7 +238,7 @@ contract OtcContract is Ownable {
                 // ---------------------------------- 완료 처리 START ----------------------------------
                 _otc[otcKey].status = OTCStatus.Completed;
                 emit OTCCompleted(_otc[otcKey].account0, _otc[otcKey].account1, _otc[otcKey].token0, _otc[otcKey].token1, _otc[otcKey].amount0, _otc[otcKey].amount1, OTCStatus.Completed);
-                // _completedOtc 에 기록용으로 추가
+                
                 _completedOtc.push(Otc(
                     _otc[otcKey].otcType,
                     _otc[otcKey].status,
@@ -253,16 +254,9 @@ contract OtcContract is Ownable {
                     _otc[otcKey].canceled1,
                     _otc[otcKey].time
                 ));
-
-                // 초기화
-                _otc[otcKey].amount0 = 0;
-                _otc[otcKey].amount1 = 0;
-                _otc[otcKey].deposited0 = false;
-                _otc[otcKey].deposited1 = false;
-                _otc[otcKey].canceled0 = false;
-                _otc[otcKey].canceled1 = false;
                 // ---------------------------------- 완료 처리 END ----------------------------------
 
+                // TODO: deposited0 && deposited1 이 true 면 자동 claim 하기
                 // ---------------------------------- 자동 claim START ----------------------------------
                 // account0 한테 transfer
                 if (_otc[otcKey].token1 == IERC20(address(0))) {
@@ -282,6 +276,15 @@ contract OtcContract is Ownable {
                     (_otc[otcKey].token0).safeTransfer(_otc[otcKey].account1, _otc[otcKey].amount0);
                 }
                 // ---------------------------------- 자동 claim END ----------------------------------
+
+                // ---------------------------------- 초기화 START ----------------------------------
+                _otc[otcKey].amount0 = 0;
+                _otc[otcKey].amount1 = 0;
+                _otc[otcKey].deposited0 = false;
+                _otc[otcKey].deposited1 = false;
+                _otc[otcKey].canceled0 = false;
+                _otc[otcKey].canceled1 = false;
+                // ---------------------------------- 초기화 END ----------------------------------
             }
         }
     }
@@ -313,7 +316,7 @@ contract OtcContract is Ownable {
                 // ---------------------------------- 완료 처리 START ----------------------------------
                 _otc[otcKey].status = OTCStatus.Completed;
                 emit OTCCompleted(_otc[otcKey].account0, _otc[otcKey].account1, _otc[otcKey].token0, _otc[otcKey].token1, _otc[otcKey].amount0, _otc[otcKey].amount1, OTCStatus.Completed);
-                // _completedOtc 에 기록용으로 추가
+                
                 _completedOtc.push(Otc(
                     _otc[otcKey].otcType,
                     _otc[otcKey].status,
@@ -329,17 +332,9 @@ contract OtcContract is Ownable {
                     _otc[otcKey].canceled1,
                     _otc[otcKey].time
                 ));
-
-                // 초기화
-                _otc[otcKey].amount0 = 0;
-                _otc[otcKey].amount1 = 0;
-                _otc[otcKey].deposited0 = false;
-                _otc[otcKey].deposited1 = false;
-                _otc[otcKey].canceled0 = false;
-                _otc[otcKey].canceled1 = false;
                 // ---------------------------------- 완료 처리 END ----------------------------------
 
-
+                // TODO: deposited0 && deposited1 이 true 면 자동 claim 하기
                 // ---------------------------------- 자동 claim START ----------------------------------
                 // account0 한테 transfer
                 if (_otc[otcKey].token1 == IERC20(address(0))) {
@@ -359,6 +354,15 @@ contract OtcContract is Ownable {
                     (_otc[otcKey].token0).safeTransfer(_otc[otcKey].account1, _otc[otcKey].amount0);
                 }
                 // ---------------------------------- 자동 claim END ----------------------------------
+
+                // ---------------------------------- 초기화 START ----------------------------------
+                _otc[otcKey].amount0 = 0;
+                _otc[otcKey].amount1 = 0;
+                _otc[otcKey].deposited0 = false;
+                _otc[otcKey].deposited1 = false;
+                _otc[otcKey].canceled0 = false;
+                _otc[otcKey].canceled1 = false;
+                // ---------------------------------- 초기화 END ----------------------------------
             }
 
         } else if (_otc[otcKey].account1 == msg.sender) {
@@ -378,7 +382,7 @@ contract OtcContract is Ownable {
                 // ---------------------------------- 완료 처리 START ----------------------------------
                 _otc[otcKey].status = OTCStatus.Completed;
                 emit OTCCompleted(_otc[otcKey].account0, _otc[otcKey].account1, _otc[otcKey].token0, _otc[otcKey].token1, _otc[otcKey].amount0, _otc[otcKey].amount1, OTCStatus.Completed);
-                // _completedOtc 에 기록용으로 추가
+                
                 _completedOtc.push(Otc(
                     _otc[otcKey].otcType,
                     _otc[otcKey].status,
@@ -394,16 +398,9 @@ contract OtcContract is Ownable {
                     _otc[otcKey].canceled1,
                     _otc[otcKey].time
                 ));
-
-                // 초기화
-                _otc[otcKey].amount0 = 0;
-                _otc[otcKey].amount1 = 0;
-                _otc[otcKey].deposited0 = false;
-                _otc[otcKey].deposited1 = false;
-                _otc[otcKey].canceled0 = false;
-                _otc[otcKey].canceled1 = false;
                 // ---------------------------------- 완료 처리 END ----------------------------------
 
+                // TODO: deposited0 && deposited1 이 true 면 자동 claim 하기
                 // ---------------------------------- 자동 claim START ----------------------------------
                 // account0 한테 transfer
                 if (_otc[otcKey].token1 == IERC20(address(0))) {
@@ -423,6 +420,15 @@ contract OtcContract is Ownable {
                     (_otc[otcKey].token0).safeTransfer(_otc[otcKey].account1, _otc[otcKey].amount0);
                 }
                 // ---------------------------------- 자동 claim END ----------------------------------
+
+                // ---------------------------------- 초기화 START ----------------------------------
+                _otc[otcKey].amount0 = 0;
+                _otc[otcKey].amount1 = 0;
+                _otc[otcKey].deposited0 = false;
+                _otc[otcKey].deposited1 = false;
+                _otc[otcKey].canceled0 = false;
+                _otc[otcKey].canceled1 = false;
+                // ---------------------------------- 초기화 END ----------------------------------
             }
         } else {
             require(false, "Both _account0 and _account1 cannot receive ETH.");
