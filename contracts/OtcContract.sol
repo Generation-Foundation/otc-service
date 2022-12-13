@@ -262,22 +262,25 @@ contract OtcContract is Ownable {
         // ---------------------------------- 완료 처리 END ----------------------------------
 
         // ---------------------------------- 자동 claim START ----------------------------------
+
         // account0 한테 transfer
+        uint256 calculatedAmount1 = calculateDistributionAmount(_otc[_otcKey].amount1);
         if (_otc[_otcKey].token1 == IERC20(address(0))) {
             // native coin
-            payable(_otc[_otcKey].account0).transfer(_otc[_otcKey].amount1);
+            payable(_otc[_otcKey].account0).transfer(calculatedAmount1);
         } else {
             // ERC20
-            (_otc[_otcKey].token1).safeTransfer(_otc[_otcKey].account0, _otc[_otcKey].amount1);
+            (_otc[_otcKey].token1).safeTransfer(_otc[_otcKey].account0, calculatedAmount1);
         }
 
         // account1 한테 transfer
+        uint256 calculatedAmount0 = calculateDistributionAmount(_otc[_otcKey].amount0);
         if (_otc[_otcKey].token0 == IERC20(address(0))) {
             // native coin
-            payable(_otc[_otcKey].account1).transfer(_otc[_otcKey].amount0);
+            payable(_otc[_otcKey].account1).transfer(calculatedAmount0);
         } else {
             // ERC20
-            (_otc[_otcKey].token0).safeTransfer(_otc[_otcKey].account1, _otc[_otcKey].amount0);
+            (_otc[_otcKey].token0).safeTransfer(_otc[_otcKey].account1, calculatedAmount0);
         }
         // ---------------------------------- 자동 claim END ----------------------------------
 
@@ -381,6 +384,14 @@ contract OtcContract is Ownable {
     function setOtcFee(uint256 _otcFee) public onlyOwner {
         require(_otcFee > 0 && _otcFee <= 1000000, "Invalid OTC Fee(_otcFee > 0 && _otcFee <= 1000000, 1000000 == 100%)");
         otcFee = _otcFee;
+    }
+
+    function calculateDistributionAmount(uint256 _amount) public view returns(uint256) {
+        uint256 calculated1 = SafeMath.mul(_amount, otcFee);
+        uint256 calculated2 = SafeMath.div(calculated1, 1000000);
+
+        uint256 result = SafeMath.sub(_amount, calculated2);
+        return result;
     }
 
     function recoverERC20(address token, uint amount) public onlyOwner {
