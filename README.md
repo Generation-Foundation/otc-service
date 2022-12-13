@@ -1,5 +1,7 @@
 # otc-service
 
+⭐ Developed / Developing by Generation Foundation
+
 ### **User actions**
 
 1. (OTC Constructor) Create
