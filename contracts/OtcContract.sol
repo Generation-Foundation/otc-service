@@ -17,7 +17,6 @@ contract OtcContract is Ownable {
     enum OTCStatus { init, Pending, Completed, Canceled }
     
     event OTCCreated(address indexed _account0, address indexed _account1, IERC20 token0, IERC20 token1, uint256 _amount0, uint256 _amount1, OTCStatus status);
-    // event OTCDeposited(address indexed _account0, address indexed _account1, IERC20 token0, IERC20 token1, uint256 _amount0, uint256 _amount1, OTCStatus status);
     event OTCCompleted(address indexed _account0, address indexed _account1, IERC20 token0, IERC20 token1, uint256 _amount0, uint256 _amount1, OTCStatus status);
     event OTCCanceled(address indexed _account0, address indexed _account1, IERC20 token0, IERC20 token1, uint256 _amount0, uint256 _amount1, OTCStatus status);
     
@@ -56,7 +55,6 @@ contract OtcContract is Ownable {
 
     mapping(address => Otc) private _otc;
     Otc[] _completedOtc;
-    // mapping(uint256 => Otc) _completedOtc;
 
     function completedOtcLength() public view returns (uint256) {
         return _completedOtc.length;
