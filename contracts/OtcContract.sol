@@ -151,7 +151,7 @@ contract OtcContract is Ownable {
         emit OTCCreated(_account0, _account1, _token0, _token1, _amount0, _amount1, OTCStatus.Pending);
     }
 
-    function depositToken(address _account0, address _account1, IERC20 depositToken, uint _depositAmount) public payable {
+    function depositToken(address _account0, address _account1, IERC20 _depositToken, uint _depositAmount) public payable {
         // 0: creator
         // 1: customer
 
@@ -172,7 +172,7 @@ contract OtcContract is Ownable {
             require(!_otc[otcKey].deposited0, "_account0 is already deposited.");
             
             // depositToken 이  creator token 이랑 일치하는가?
-            require(_otc[otcKey].token0 == depositToken, "OTC token0 does not match.");
+            require(_otc[otcKey].token0 == _depositToken, "OTC token0 does not match.");
             require(_otc[otcKey].amount0 == _depositAmount, "OTC amount0 does not match.");
             
             IERC20(_otc[otcKey].token0).transferFrom(msg.sender, address(this), _depositAmount);
@@ -185,7 +185,7 @@ contract OtcContract is Ownable {
             // 이미 deposit 한 것인가?
             require(!_otc[otcKey].deposited1, "_account1 is already deposited.");
 
-            require(_otc[otcKey].token1 == depositToken, "OTC token1 does not match.");
+            require(_otc[otcKey].token1 == _depositToken, "OTC token1 does not match.");
             require(_otc[otcKey].amount1 == _depositAmount, "OTC amount1 does not match.");
 
             IERC20(_otc[otcKey].token1).transferFrom(msg.sender, address(this), _depositAmount);
