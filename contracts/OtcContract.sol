@@ -29,6 +29,10 @@ contract OtcContract is Ownable {
     // 3: "OTC_TYPE_FILE"
 
     // token의 0x0000000000000000000000000000000000000000 는 ETH를 의미한다.
+
+    // decimal: 6(1000000 == 100%를 의미한다)
+    // 기본은 0.3%
+    uint256 public otcFee = 3000;
     
     struct Otc {
         uint otcType;
@@ -79,7 +83,7 @@ contract OtcContract is Ownable {
     // 2) NFT
     // 3) File Path(IPFS URL): 문서, 사진, 동영상, 텍스트 등
 
-    function getOtcKey(address _creator, address _customer) internal returns (address) {
+    function getOtcKey(address _creator, address _customer) internal view returns (address) {
         // key: (creator 주소 + customer address) -> 이렇게하면 OTC 생성자와 특정인은 단 하나의 OTC만 개설할 수 있다.
         
         uint256 creatorNum = uint256(uint160(_creator));
@@ -98,7 +102,7 @@ contract OtcContract is Ownable {
         return otcKey;
     }
 
-    function getOtcInfo(address _account0, address _account1) public returns (Otc memory) {
+    function getOtcInfo(address _account0, address _account1) public view returns (Otc memory) {
         require(_account0 != address(0), "_account0 should not be address(0).");
         require(_account1 != address(0), "_account1 should not be address(0).");
 
@@ -372,6 +376,11 @@ contract OtcContract is Ownable {
             _otc[otcKey].canceled0 = false;
             _otc[otcKey].canceled1 = false;
         }
+    }
+
+    function setOtcFee(uint256 _otcFee) public onlyOwner {
+        require(_otcFee > 0 && _otcFee <= 1000000, "Invalid OTC Fee(_otcFee > 0 && _otcFee <= 1000000, 1000000 == 100%)");
+        otcFee = _otcFee;
     }
 
     function recoverERC20(address token, uint amount) public onlyOwner {
