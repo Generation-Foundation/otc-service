@@ -68,20 +68,16 @@ contract OtcContract is Ownable {
     // 1. (OTC 생성자) Create
     // 2. Approve
     // 3. Deposit
-    // 4. Confirm(x)
-    // 5. Claim(x)
-    // 6. Cancel(Refund)
+    // 4. Cancel(Refund)
 
     // * OTC 프로세스(위의 단계에서 액션을 조합해서 유저가 최소한의 버튼을 누르도록 하자
     // 1) Create OTC
     // 2) Deposit(Approve + Deposit + Complete + Claim)
-    // 3) Confirm(Confirm + Claim)(x)
 
     // * 교환할 대상
-    // 1) Native Coin(ETH, GEN, MATIC 등...)
-    // 2) ERC20 Token
-    // 3) NFT
-    // 4) File Path(IPFS URL): 문서, 사진, 동영상, 텍스트 등
+    // 1) Native Coin(ETH, GEN, MATIC 등...), ERC20 Token
+    // 2) NFT
+    // 3) File Path(IPFS URL): 문서, 사진, 동영상, 텍스트 등
 
     function getOtcKey(address _creator, address _customer) internal returns (address) {
         // key: (creator 주소 + customer address) -> 이렇게하면 OTC 생성자와 특정인은 단 하나의 OTC만 개설할 수 있다.
@@ -100,6 +96,15 @@ contract OtcContract is Ownable {
         }
 
         return otcKey;
+    }
+
+    function getOtcInfo(address _account0, address _account1) public returns (Otc memory) {
+        require(_account0 != address(0), "_account0 should not be address(0).");
+        require(_account1 != address(0), "_account1 should not be address(0).");
+
+        address otcKey = getOtcKey(_account0, _account1);
+
+        return _otc[otcKey];
     }
 
     function createOtc(string memory _otcType, address _account1, IERC20 _token0, IERC20 _token1, uint256 _amount0, uint256 _amount1) public {
@@ -252,7 +257,6 @@ contract OtcContract is Ownable {
         ));
         // ---------------------------------- 완료 처리 END ----------------------------------
 
-        // TODO: deposited0 && deposited1 이 true 면 자동 claim 하기
         // ---------------------------------- 자동 claim START ----------------------------------
         // account0 한테 transfer
         if (_otc[_otcKey].token1 == IERC20(address(0))) {
