@@ -14,6 +14,7 @@ import "@openzeppelin/contracts/access/Ownable.sol";
 contract OtcContract is Ownable {
     using SafeERC20 for IERC20;
 
+
     enum OTCStatus { init, Pending, Completed, Canceled }
     
     event OTCCreated(address indexed _account0, address indexed _account1, IERC20 token0, IERC20 token1, uint256 _amount0, uint256 _amount1, OTCStatus status);
@@ -100,13 +101,37 @@ contract OtcContract is Ownable {
         return otcKey;
     }
 
-    function getOtcInfo(address _account0, address _account1) public view returns (Otc memory) {
+    function getOtcInfo(address _account0, address _account1) public view returns (
+        uint, 
+        OTCStatus, 
+        address,
+        IERC20,
+        uint,
+        bool,
+        address,
+        IERC20,
+        uint,
+        bool,
+        uint256
+    ) {
         require(_account0 != address(0), "_account0 should not be address(0).");
         require(_account1 != address(0), "_account1 should not be address(0).");
 
         address otcKey = getOtcKey(_account0, _account1);
 
-        return _otc[otcKey];
+        return (
+            _otc[otcKey].otcType, 
+            _otc[otcKey].status, 
+            _otc[otcKey].account0, 
+            _otc[otcKey].token0,
+            _otc[otcKey].amount0,
+            _otc[otcKey].deposited0,
+            _otc[otcKey].account1,
+            _otc[otcKey].token1,
+            _otc[otcKey].amount1,
+            _otc[otcKey].deposited1,
+            _otc[otcKey].time
+        );
     }
 
     function createOtc(string memory _otcType, address _account1, IERC20 _token0, IERC20 _token1, uint256 _amount0, uint256 _amount1) public {
