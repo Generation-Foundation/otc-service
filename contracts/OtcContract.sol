@@ -156,6 +156,8 @@ contract OtcContract is Ownable {
             _otc[otcKey].otcType = 2;
         } else if (keccak256(bytes(_otcType)) == keccak256(bytes("OTC_TYPE_FILE"))) {
             _otc[otcKey].otcType = 3;
+        } else {
+            require(false, "_otcType must be one of OTC_TYPE_TOKEN, OTC_TYPE_NFT, and OTC_TYPE_FILE.");
         }
 
         // Token Address 가 null 이면 Native 코인이다
@@ -178,8 +180,7 @@ contract OtcContract is Ownable {
         // 0: creator
         // 1: customer
 
-        uint _minAmount = 1*(10**18);
-        require(_depositAmount >= _minAmount, "_depositAmount less than minimum amount.");
+        require(_depositAmount > 0, "_depositAmount less than 0.");
         
         address otcKey = getOtcKey(_account0, _account1);
 
@@ -220,8 +221,7 @@ contract OtcContract is Ownable {
     }
 
     function receiveETH(address _account0, address _account1) public payable {
-        uint _minAmount = 1*(10**18);
-        require(msg.value >= _minAmount, "msg.value less than minimum amount.");
+        require(msg.value > 0, "msg.value less than 0.");
 
         address otcKey = getOtcKey(_account0, _account1);
 
