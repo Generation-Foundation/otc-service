@@ -156,6 +156,8 @@ contract OtcContract is Ownable {
             _otc[otcKey].otcType = 2;
         } else if (keccak256(bytes(_otcType)) == keccak256(bytes("OTC_TYPE_FILE"))) {
             _otc[otcKey].otcType = 3;
+        } else {
+            require(false, "_otcType must be one of OTC_TYPE_TOKEN, OTC_TYPE_NFT, and OTC_TYPE_FILE.");
         }
 
         // Token Address 가 null 이면 Native 코인이다
