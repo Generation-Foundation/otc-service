@@ -180,8 +180,7 @@ contract OtcContract is Ownable {
         // 0: creator
         // 1: customer
 
-        uint _minAmount = 1*(10**18);
-        require(_depositAmount >= _minAmount, "_depositAmount less than minimum amount.");
+        require(_depositAmount > 0, "_depositAmount less than 0.");
         
         address otcKey = getOtcKey(_account0, _account1);
 
@@ -222,8 +221,7 @@ contract OtcContract is Ownable {
     }
 
     function receiveETH(address _account0, address _account1) public payable {
-        uint _minAmount = 1*(10**18);
-        require(msg.value >= _minAmount, "msg.value less than minimum amount.");
+        require(msg.value > 0, "msg.value less than 0.");
 
         address otcKey = getOtcKey(_account0, _account1);
 
