@@ -29,6 +29,7 @@ contract OtcContract is Ownable {
     // 3: "OTC_TYPE_FILE"
 
     // token의 0x0000000000000000000000000000000000000000 는 ETH를 의미한다.
+    // token의 0xFFfFfFffFFfffFFfFFfFFFFFffFFFffffFfFFFfF 는 File Id를 입력하겠다는 뜻이다.
 
     // decimal: 6(1000000 == 100%를 의미한다)
     // 기본은 0.3%
