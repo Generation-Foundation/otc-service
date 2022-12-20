@@ -437,7 +437,7 @@ contract OtcContract is Ownable {
                 // native coin
                 payable(_otc[_otcKey].account0).transfer(calculatedAmount1);
             } else if (_otc[_otcKey].token1 == IERC20(address(0xFFfFfFffFFfffFFfFFfFFFFFffFFFffffFfFFFfF))) {
-                // Nothing to do
+                // Nothing to do: 나중에 real file url을 받게 됨
             } else {
                 // ERC20
                 (_otc[_otcKey].token1).safeTransfer(_otc[_otcKey].account0, calculatedAmount1);
@@ -449,7 +449,7 @@ contract OtcContract is Ownable {
                 // native coin
                 payable(_otc[_otcKey].account1).transfer(calculatedAmount0);
             } else if (_otc[_otcKey].token0 == IERC20(address(0xFFfFfFffFFfffFFfFFfFFFFFffFFFffffFfFFFfF))) {
-                // Nothing to do
+                // Nothing to do: 나중에 real file url을 받게 됨
             } else {
                 // ERC20
                 (_otc[_otcKey].token0).safeTransfer(_otc[_otcKey].account1, calculatedAmount0);
