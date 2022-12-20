@@ -33,6 +33,9 @@ contract OtcContract is Ownable {
 
     // decimal: 6(1000000 == 100%를 의미한다)
     // 기본은 0.3%
+
+    // 파일 거래의 경우 token에 0xffff...ffff 를 입력하고 amount에 file Id(숫자)를 입력한다.
+
     uint256 public otcFee = 3000;
     
     struct Otc {
@@ -55,8 +58,6 @@ contract OtcContract is Ownable {
         uint256 time;
     }
 
-    // 파일 거래의 경우 token에 0xffff...ffff 를 입력하고 amount에 file Id(숫자)를 입력한다.
-
     mapping(address => Otc) private _otc;
     Otc[] _completedOtc;
 
@@ -67,6 +68,10 @@ contract OtcContract is Ownable {
     function getOtcHistory(uint256 _index) public view returns (Otc memory) {
         return _completedOtc[_index];
     }
+
+    // 파일 거래 완료된 것 기록(key: file ID)
+    // key: fild ID, value: 구매자 주소
+    mapping(uint256 => address) private _completedFileOtc;
 
     receive() external payable {}
 
@@ -383,6 +388,17 @@ contract OtcContract is Ownable {
             _otc[_otcKey].canceled1,
             _otc[_otcKey].time
         ));
+
+        // file OTC인가?: _completedFileOtc 기록
+        if (_otc[_otcKey].token0 == IERC20(address(0xFFfFfFffFFfffFFfFFfFFFFFffFFFffffFfFFFfF))) {
+            // key: file ID, value: 구매자 주소
+            uint256 fileId = _otc[_otcKey].amount0;
+            _completedFileOtc[fileId] = _otc[_otcKey].account1;
+        } else if (_otc[_otcKey].token1 == IERC20(address(0xFFfFfFffFFfffFFfFFfFFFFFffFFFffffFfFFFfF))) {
+            uint256 fileId = _otc[_otcKey].amount1;
+            _completedFileOtc[fileId] = _otc[_otcKey].account0;
+        }
+
         // ---------------------------------- 완료 처리 END ----------------------------------
 
         // ---------------------------------- 자동 claim START ----------------------------------
