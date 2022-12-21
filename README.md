@@ -1,6 +1,7 @@
 # otc-service
-
 ⭐ Developed / Developing by Generation Foundation
+
+![OTC Flow](https://user-images.githubusercontent.com/34641838/208807403-748f5c76-0426-4b36-a9c6-7c3ca5cb6f1c.png)
 
 ### **User actions**
 
