@@ -14,7 +14,7 @@ import "@openzeppelin/contracts/access/Ownable.sol";
 contract OtcContract is Ownable {
     using SafeERC20 for IERC20;
 
-
+    // OTCStatus { 0, 1, 2, 3 }
     enum OTCStatus { init, Pending, Completed, Canceled }
     
     event OTCCreated(address indexed _account0, address indexed _account1, IERC20 token0, IERC20 token1, uint256 _amount0, uint256 _amount1, OTCStatus status);
@@ -29,9 +29,13 @@ contract OtcContract is Ownable {
     // 3: "OTC_TYPE_FILE"
 
     // token의 0x0000000000000000000000000000000000000000 는 ETH를 의미한다.
+    // token의 0xFFfFfFffFFfffFFfFFfFFFFFffFFFffffFfFFFfF 는 File Id를 입력하겠다는 뜻이다.
 
     // decimal: 6(1000000 == 100%를 의미한다)
     // 기본은 0.3%
+
+    // 파일 거래의 경우 token에 0xffff...ffff 를 입력하고 amount에 file Id(숫자)를 입력한다.
+
     uint256 public otcFee = 3000;
     
     struct Otc {
@@ -64,6 +68,10 @@ contract OtcContract is Ownable {
     function getOtcHistory(uint256 _index) public view returns (Otc memory) {
         return _completedOtc[_index];
     }
+
+    // 파일 거래 완료된 것 기록(key: file ID)
+    // key: fild ID, value: 구매자 주소
+    mapping(uint256 => address) private _completedFileOtc;
 
     receive() external payable {}
 
@@ -134,6 +142,14 @@ contract OtcContract is Ownable {
         );
     }
 
+    // * Token 교환
+    // 양쪽이 deposit 하는 순간 즉시 교환 분배가 된다.
+
+    // * File 교환
+    // 1. 앱에서 파일을 IPFS에 업로드하고 받은 ipfs url을 3 seconds club 서버에 등록하고 unique file Id를 받는다.
+    // 2. OTC 파일 거래 컨트랙트에 unique file Id를 등록한다. 파일 거래할 때는 개설된 OTC에 file id를 먼저 올려줘야 하고, file id에 파일이 업로드 되어 있는지는 3 seconds club 서버에서 진위를 확인할 수 있다. 
+    // 3. 거래가 완료되면 파일을 구매한 사람이 서버에 거래 완료 api를 실행해서 실제 파일 url path를 받을 수 있다(서버는 이 시점에 컨트랙트에 거래 완료 여부를 확인하고 실제 url을 전달). 거래 완료 시점에 파일 판매자는 토큰을 받게 된다.
+    
     function createOtc(string memory _otcType, address _account1, IERC20 _token0, IERC20 _token1, uint256 _amount0, uint256 _amount1) public {
         // creator: 0
         // customer: 1
@@ -187,35 +203,80 @@ contract OtcContract is Ownable {
         // Pending 상태인지 체크
         require(_otc[otcKey].status == OTCStatus.Pending, "You need to create OTC before depositing.");
 
-        // uint256 msgSenderAccountType;  // 0: creator, 1: customer
-        
-        // msg.sender 가 creator 인지 customer 인지 확인하기
-        if (_otc[otcKey].account0 == msg.sender) {
-            // creator
-            // 이미 deposit 한 것인가?
-            require(!_otc[otcKey].deposited0, "_account0 is already deposited.");
-            
-            // depositToken 이  creator token 이랑 일치하는가?
-            require(_otc[otcKey].token0 == _depositToken, "OTC token0 does not match.");
-            require(_otc[otcKey].amount0 == _depositAmount, "OTC amount0 does not match.");
-            
-            IERC20(_otc[otcKey].token0).transferFrom(msg.sender, address(this), _depositAmount);
-            _otc[otcKey].deposited0 = true;
-            if (_otc[otcKey].deposited1) {
-                distributionOtc(otcKey);
+        if (_otc[otcKey].otcType == 1) {
+            // Token
+            // msg.sender 가 creator 인지 customer 인지 확인하기
+            if (_otc[otcKey].account0 == msg.sender) {
+                // creator
+                // 이미 deposit 한 것인가?
+                require(!_otc[otcKey].deposited0, "_account0 is already deposited.");
+                
+                // depositToken 이  creator token 이랑 일치하는가?
+                require(_otc[otcKey].token0 == _depositToken, "OTC token0 does not match.");
+                require(_otc[otcKey].amount0 == _depositAmount, "OTC amount0 does not match.");
+                
+                IERC20(_otc[otcKey].token0).transferFrom(msg.sender, address(this), _depositAmount);
+                _otc[otcKey].deposited0 = true;
+                if (_otc[otcKey].deposited1) {
+                    distributionOtc(otcKey);
+                }
+            } else if (_otc[otcKey].account1 == msg.sender) {
+                // customer
+                // 이미 deposit 한 것인가?
+                require(!_otc[otcKey].deposited1, "_account1 is already deposited.");
+
+                require(_otc[otcKey].token1 == _depositToken, "OTC token1 does not match.");
+                require(_otc[otcKey].amount1 == _depositAmount, "OTC amount1 does not match.");
+
+                IERC20(_otc[otcKey].token1).transferFrom(msg.sender, address(this), _depositAmount);
+                _otc[otcKey].deposited1 = true;
+                if (_otc[otcKey].deposited0) {
+                    distributionOtc(otcKey);
+                }
             }
-        } else if (_otc[otcKey].account1 == msg.sender) {
-            // customer
-            // 이미 deposit 한 것인가?
-            require(!_otc[otcKey].deposited1, "_account1 is already deposited.");
+        } else if (_otc[otcKey].otcType == 2) {
+            // NFT
+        } else if (_otc[otcKey].otcType == 3) {
+            // File
+            
+            // deposit 전에 File Id가 먼저 입력되었는가?
+            // 파일 거래의 경우 token에 0xffff...ffff 를 입력하고 amount에 file Id(숫자)를 입력한다.
 
-            require(_otc[otcKey].token1 == _depositToken, "OTC token1 does not match.");
-            require(_otc[otcKey].amount1 == _depositAmount, "OTC amount1 does not match.");
+            // msg.sender 가 creator 인지 customer 인지 확인하기
+            if (_otc[otcKey].account0 == msg.sender) {
+                // creator
+                // 이미 deposit 한 것인가?
+                require(!_otc[otcKey].deposited0, "_account0 is already deposited.");
+                
+                // depositToken 이  creator token 이랑 일치하는가?
+                require(_otc[otcKey].token0 == _depositToken, "OTC token0 does not match.");
+                require(_otc[otcKey].amount0 == _depositAmount, "OTC amount0 does not match.");
 
-            IERC20(_otc[otcKey].token1).transferFrom(msg.sender, address(this), _depositAmount);
-            _otc[otcKey].deposited1 = true;
-            if (_otc[otcKey].deposited0) {
-                distributionOtc(otcKey);
+                // 파일 거래일 때 token 에 0xFFfFfFffFFfffFFfFFfFFFFFffFFFffffFfFFFfF 가 입력된 경우에는 transferFrom을 하지 않는다.
+                if (_otc[otcKey].token0 != IERC20(address(0xFFfFfFffFFfffFFfFFfFFFFFffFFFffffFfFFFfF))) {
+                    IERC20(_otc[otcKey].token0).transferFrom(msg.sender, address(this), _depositAmount);
+                }
+                
+                _otc[otcKey].deposited0 = true;
+                if (_otc[otcKey].deposited1) {
+                    distributionOtc(otcKey);
+                }
+            } else if (_otc[otcKey].account1 == msg.sender) {
+                // customer
+                // 이미 deposit 한 것인가?
+                require(!_otc[otcKey].deposited1, "_account1 is already deposited.");
+
+                require(_otc[otcKey].token1 == _depositToken, "OTC token1 does not match.");
+                require(_otc[otcKey].amount1 == _depositAmount, "OTC amount1 does not match.");
+
+                if (_otc[otcKey].token1 != IERC20(address(0xFFfFfFffFFfffFFfFFfFFFFFffFFFffffFfFFFfF))) {
+                    IERC20(_otc[otcKey].token1).transferFrom(msg.sender, address(this), _depositAmount);
+                }
+
+                _otc[otcKey].deposited1 = true;
+                if (_otc[otcKey].deposited0) {
+                    distributionOtc(otcKey);
+                }
             }
         }
     }
@@ -228,36 +289,81 @@ contract OtcContract is Ownable {
         // Pending 상태인지 체크
         require(_otc[otcKey].status == OTCStatus.Pending, "You need to create OTC before depositing.");
 
-        // msg.sender 가 creator 인지 customer 인지 확인하기
-        if (_otc[otcKey].account0 == msg.sender) {
-            // creator
-            // 이미 deposit 한 것인가?
-            require(!_otc[otcKey].deposited0, "_account0 is already deposited.");
+        if (_otc[otcKey].otcType == 1) { 
+            // Token
+            // msg.sender 가 creator 인지 customer 인지 확인하기
+            if (_otc[otcKey].account0 == msg.sender) {
+                // creator
+                // 이미 deposit 한 것인가?
+                require(!_otc[otcKey].deposited0, "_account0 is already deposited.");
 
-            // token0 이 zero address 인지 확인(아니면 잘못 보낸것..)
-            require(_otc[otcKey].token0 == IERC20(address(0)), "OTC token0 does not match.");
-            require(_otc[otcKey].amount0 == msg.value, "OTC amount0 does not match.");
-            
-            _otc[otcKey].deposited0 = true;
-            if (_otc[otcKey].deposited1) {
-                distributionOtc(otcKey);
+                // token0 이 zero address 인지 확인(아니면 잘못 보낸것..)
+                require(_otc[otcKey].token0 == IERC20(address(0)), "OTC token0 does not match.");
+                require(_otc[otcKey].amount0 == msg.value, "OTC amount0 does not match.");
+                
+                _otc[otcKey].deposited0 = true;
+                if (_otc[otcKey].deposited1) {
+                    distributionOtc(otcKey);
+                }
+
+            } else if (_otc[otcKey].account1 == msg.sender) {
+                // customer
+                // 이미 deposit 한 것인가?
+                require(!_otc[otcKey].deposited1, "_account1 is already deposited.");
+
+                // token1 이 zero address 인지 확인
+                require(_otc[otcKey].token1 == IERC20(address(0)), "OTC token1 does not match.");
+                require(_otc[otcKey].amount1 == msg.value, "OTC amount1 does not match.");
+                
+                _otc[otcKey].deposited1 = true;
+                if (_otc[otcKey].deposited0) {
+                    distributionOtc(otcKey);
+                }
+            } else {
+                require(false, "Both _account0 and _account1 cannot receive ETH.");
             }
+        } else if (_otc[otcKey].otcType == 2) { 
+            // NFT
+        } else if (_otc[otcKey].otcType == 3) { 
+            // File
 
-        } else if (_otc[otcKey].account1 == msg.sender) {
-            // customer
-            // 이미 deposit 한 것인가?
-            require(!_otc[otcKey].deposited1, "_account1 is already deposited.");
+            // msg.sender 가 creator 인지 customer 인지 확인하기
+            if (_otc[otcKey].account0 == msg.sender) {
+                // creator
+                // 이미 deposit 한 것인가?
+                require(!_otc[otcKey].deposited0, "_account0 is already deposited.");
 
-            // token1 이 zero address 인지 확인
-            require(_otc[otcKey].token1 == IERC20(address(0)), "OTC token1 does not match.");
-            require(_otc[otcKey].amount1 == msg.value, "OTC amount1 does not match.");
-            
-            _otc[otcKey].deposited1 = true;
-            if (_otc[otcKey].deposited0) {
-                distributionOtc(otcKey);
+                // token0 이 zero address 인지 확인(아니면 잘못 보낸것..)
+                require(_otc[otcKey].token0 == IERC20(address(0)), "OTC token0 does not match.");
+                require(_otc[otcKey].amount0 == msg.value, "OTC amount0 does not match.");
+
+                // File 거래인 경우에는 depositToken()을 이용해야 한다.
+                require(_otc[otcKey].token0 != IERC20(address(0xFFfFfFffFFfffFFfFFfFFFFFffFFFffffFfFFFfF)), "Use depositToken() to enter file ID.");
+                
+                _otc[otcKey].deposited0 = true;
+                if (_otc[otcKey].deposited1) {
+                    distributionOtc(otcKey);
+                }
+
+            } else if (_otc[otcKey].account1 == msg.sender) {
+                // customer
+                // 이미 deposit 한 것인가?
+                require(!_otc[otcKey].deposited1, "_account1 is already deposited.");
+
+                // token1 이 zero address 인지 확인
+                require(_otc[otcKey].token1 == IERC20(address(0)), "OTC token1 does not match.");
+                require(_otc[otcKey].amount1 == msg.value, "OTC amount1 does not match.");
+
+                // File 거래인 경우에는 depositToken()을 이용해야 한다.
+                require(_otc[otcKey].token1 != IERC20(address(0xFFfFfFffFFfffFFfFFfFFFFFffFFFffffFfFFFfF)), "Use depositToken() to enter file ID.");
+                
+                _otc[otcKey].deposited1 = true;
+                if (_otc[otcKey].deposited0) {
+                    distributionOtc(otcKey);
+                }
+            } else {
+                require(false, "Both _account0 and _account1 cannot receive ETH.");
             }
-        } else {
-            require(false, "Both _account0 and _account1 cannot receive ETH.");
         }
     }
 
@@ -282,28 +388,72 @@ contract OtcContract is Ownable {
             _otc[_otcKey].canceled1,
             _otc[_otcKey].time
         ));
+
+        // file OTC인가?: _completedFileOtc 기록
+        if (_otc[_otcKey].token0 == IERC20(address(0xFFfFfFffFFfffFFfFFfFFFFFffFFFffffFfFFFfF))) {
+            // key: file ID, value: 구매자 주소
+            uint256 fileId = _otc[_otcKey].amount0;
+            _completedFileOtc[fileId] = _otc[_otcKey].account1;
+        } else if (_otc[_otcKey].token1 == IERC20(address(0xFFfFfFffFFfffFFfFFfFFFFFffFFFffffFfFFFfF))) {
+            uint256 fileId = _otc[_otcKey].amount1;
+            _completedFileOtc[fileId] = _otc[_otcKey].account0;
+        }
+
         // ---------------------------------- 완료 처리 END ----------------------------------
 
         // ---------------------------------- 자동 claim START ----------------------------------
 
-        // account0 한테 transfer
-        uint256 calculatedAmount1 = calculateDistributionAmount(_otc[_otcKey].amount1);
-        if (_otc[_otcKey].token1 == IERC20(address(0))) {
-            // native coin
-            payable(_otc[_otcKey].account0).transfer(calculatedAmount1);
-        } else {
-            // ERC20
-            (_otc[_otcKey].token1).safeTransfer(_otc[_otcKey].account0, calculatedAmount1);
-        }
+        // OTC Tyle 확인
+        if (_otc[_otcKey].otcType == 1) {
+            // Token
 
-        // account1 한테 transfer
-        uint256 calculatedAmount0 = calculateDistributionAmount(_otc[_otcKey].amount0);
-        if (_otc[_otcKey].token0 == IERC20(address(0))) {
-            // native coin
-            payable(_otc[_otcKey].account1).transfer(calculatedAmount0);
-        } else {
-            // ERC20
-            (_otc[_otcKey].token0).safeTransfer(_otc[_otcKey].account1, calculatedAmount0);
+            // account0 한테 transfer
+            uint256 calculatedAmount1 = calculateDistributionAmount(_otc[_otcKey].amount1);
+            if (_otc[_otcKey].token1 == IERC20(address(0))) {
+                // native coin
+                payable(_otc[_otcKey].account0).transfer(calculatedAmount1);
+            } else {
+                // ERC20
+                (_otc[_otcKey].token1).safeTransfer(_otc[_otcKey].account0, calculatedAmount1);
+            }
+
+            // account1 한테 transfer
+            uint256 calculatedAmount0 = calculateDistributionAmount(_otc[_otcKey].amount0);
+            if (_otc[_otcKey].token0 == IERC20(address(0))) {
+                // native coin
+                payable(_otc[_otcKey].account1).transfer(calculatedAmount0);
+            } else {
+                // ERC20
+                (_otc[_otcKey].token0).safeTransfer(_otc[_otcKey].account1, calculatedAmount0);
+            }
+        } else if (_otc[_otcKey].otcType == 2) {
+            // NFT
+        } else if (_otc[_otcKey].otcType == 3) {
+            // File
+
+            // account0 한테 transfer
+            uint256 calculatedAmount1 = calculateDistributionAmount(_otc[_otcKey].amount1);
+            if (_otc[_otcKey].token1 == IERC20(address(0))) {
+                // native coin
+                payable(_otc[_otcKey].account0).transfer(calculatedAmount1);
+            } else if (_otc[_otcKey].token1 == IERC20(address(0xFFfFfFffFFfffFFfFFfFFFFFffFFFffffFfFFFfF))) {
+                // Nothing to do: 나중에 real file url을 받게 됨
+            } else {
+                // ERC20
+                (_otc[_otcKey].token1).safeTransfer(_otc[_otcKey].account0, calculatedAmount1);
+            }
+
+            // account1 한테 transfer
+            uint256 calculatedAmount0 = calculateDistributionAmount(_otc[_otcKey].amount0);
+            if (_otc[_otcKey].token0 == IERC20(address(0))) {
+                // native coin
+                payable(_otc[_otcKey].account1).transfer(calculatedAmount0);
+            } else if (_otc[_otcKey].token0 == IERC20(address(0xFFfFfFffFFfffFFfFFfFFFFFffFFFffffFfFFFfF))) {
+                // Nothing to do: 나중에 real file url을 받게 됨
+            } else {
+                // ERC20
+                (_otc[_otcKey].token0).safeTransfer(_otc[_otcKey].account1, calculatedAmount0);
+            }
         }
         // ---------------------------------- 자동 claim END ----------------------------------
 
@@ -425,8 +575,4 @@ contract OtcContract is Ownable {
     function recoverETH() public onlyOwner {
         payable(msg.sender).transfer(address(this).balance);
     }
-
-    // TODO: File 교환을 어떻게 할지? 고민...
-
-
 }
