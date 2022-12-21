@@ -43,6 +43,7 @@ Let the user press the minimum number of buttons by combining the actions the us
 8. Record the history.
 
 ### File Exchange Description
+![OTC file flow](https://user-images.githubusercontent.com/34641838/208810462-7afc1343-f71f-49df-a1e0-44f2f855f2e2.png)
 
 1. The app uploads the file to IPFS, registers the received ipfs url to the 3 seconds club server, and receives the fileId.
 2. Register the file ID in the OTC file transaction contract. At this time, the contract verifies the file ID and registration account in the DB by oraclize (renamed provable). For example, if the other party raised 100 USDT, which corresponds to the file price, it will be automatically distributed after verification.
