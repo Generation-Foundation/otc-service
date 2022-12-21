@@ -45,6 +45,6 @@ Let the user press the minimum number of buttons by combining the actions the us
 ### File Exchange Description
 ![OTC file flow](https://user-images.githubusercontent.com/34641838/208811260-e1464b73-a381-496b-9bbd-7c9c5dedf26d.png)
 
-1. The app uploads the file to IPFS, registers the received ipfs url to the 3 seconds club server, and receives the fileId.
-2. Register the file ID in the OTC file transaction contract. At this time, the contract verifies the file ID and registration account in the DB by oraclize (renamed provable). For example, if the other party raised 100 USDT, which corresponds to the file price, it will be automatically distributed after verification.
-3. The file purchaser acquires the ipfs url through API verification on the 3 seconds club server.
+1. The app uploads the file to IPFS, registers the received ipfs url (the hash value starting with Q is important) to the 3 seconds club server, and receives a unique file ID.
+2. Register a unique file ID in the OTC file transaction contract. When transacting files, you must first upload the file id to the opened OTC, and you can check the authenticity of the file on the 3 seconds club server to see if the file is uploaded to the file id.
+3. When the transaction is completed, the person who purchased the file can execute the transaction completion api on the server to receive the actual file url path (the server confirms whether the transaction has been completed at this point and delivers the actual url to the contract). At the time of transaction completion, the file seller will receive tokens.
