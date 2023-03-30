@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: MIT
-pragma solidity ^0.8.15;
+pragma solidity ^0.8.17;
 pragma experimental ABIEncoderV2;
 
 /**
@@ -11,18 +11,16 @@ import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import "@openzeppelin/contracts/utils/math/SafeMath.sol";
 import "@openzeppelin/contracts/access/Ownable.sol";
 
+interface GenStakingInterface {
+    function getStakedAmount(address userAddress) external view returns (uint256);
+}
+
 contract OtcContract is Ownable {
     using SafeERC20 for IERC20;
 
     // OTCStatus { 0, 1, 2, 3 }
     enum OTCStatus { init, Pending, Completed, Canceled }
     
-    event OTCCreated(address indexed _account0, address indexed _account1, IERC20 token0, IERC20 token1, uint256 _amount0, uint256 _amount1, OTCStatus status);
-    event OTCCompleted(address indexed _account0, address indexed _account1, IERC20 token0, IERC20 token1, uint256 _amount0, uint256 _amount1, OTCStatus status);
-    event OTCCanceled(address indexed _account0, address indexed _account1, IERC20 token0, IERC20 token1, uint256 _amount0, uint256 _amount1, OTCStatus status);
-    
-    event Recovered(address token, uint256 amount);
-
     // otcType
     // 1: "OTC_TYPE_TOKEN"
     // 2: "OTC_TYPE_NFT"
@@ -32,11 +30,11 @@ contract OtcContract is Ownable {
     // token의 0xFFfFfFffFFfffFFfFFfFFFFFffFFFffffFfFFFfF 는 File Id를 입력하겠다는 뜻이다.
 
     // decimal: 6(1000000 == 100%를 의미한다)
-    // 기본은 0.3%
+    // 기본은 0.2%
 
     // 파일 거래의 경우 token에 0xffff...ffff 를 입력하고 amount에 file Id(숫자)를 입력한다.
-
-    uint256 public otcFee = 3000;
+    
+    uint256 public otcFee = 2000;
     
     struct Otc {
         uint otcType;
@@ -71,9 +69,24 @@ contract OtcContract is Ownable {
 
     // 파일 거래 완료된 것 기록(key: file ID)
     // key: fild ID, value: 구매자 주소
-    mapping(uint256 => address) private _completedFileOtc;
+    mapping(uint256 => address) public _completedFileOtc;
+
+    address public genStakingContractAddress;
 
     receive() external payable {}
+
+    // [주의] Fever Staking의 경우 GEN Staking 컨트랙트 주소를 입력해야 한다.
+    function setGenStakingContractAddress(address contractAddress) onlyOwner public {
+        genStakingContractAddress = contractAddress;
+        emit GenStakingAddressUpdated(genStakingContractAddress);
+    }
+
+    // OTC 수수료 할인을 위해 GEN 스테이킹 수량 체크
+    function getGenStakingAmount(address userAddress) internal view returns (uint256) {
+        uint256 stakedAmount = GenStakingInterface(genStakingContractAddress).getStakedAmount(userAddress);
+        return stakedAmount;
+    }
+
 
     // * 유저가 하는 액션
     // 1. (OTC 생성자) Create
@@ -408,7 +421,7 @@ contract OtcContract is Ownable {
             // Token
 
             // account0 한테 transfer
-            uint256 calculatedAmount1 = calculateDistributionAmount(_otc[_otcKey].amount1);
+            uint256 calculatedAmount1 = calculateDistributionAmount(_otc[_otcKey].amount1, _otc[_otcKey].account0);
             if (_otc[_otcKey].token1 == IERC20(address(0))) {
                 // native coin
                 payable(_otc[_otcKey].account0).transfer(calculatedAmount1);
@@ -418,7 +431,7 @@ contract OtcContract is Ownable {
             }
 
             // account1 한테 transfer
-            uint256 calculatedAmount0 = calculateDistributionAmount(_otc[_otcKey].amount0);
+            uint256 calculatedAmount0 = calculateDistributionAmount(_otc[_otcKey].amount0, _otc[_otcKey].account1);
             if (_otc[_otcKey].token0 == IERC20(address(0))) {
                 // native coin
                 payable(_otc[_otcKey].account1).transfer(calculatedAmount0);
@@ -432,7 +445,7 @@ contract OtcContract is Ownable {
             // File
 
             // account0 한테 transfer
-            uint256 calculatedAmount1 = calculateDistributionAmount(_otc[_otcKey].amount1);
+            uint256 calculatedAmount1 = calculateDistributionAmount(_otc[_otcKey].amount1, _otc[_otcKey].account0);
             if (_otc[_otcKey].token1 == IERC20(address(0))) {
                 // native coin
                 payable(_otc[_otcKey].account0).transfer(calculatedAmount1);
@@ -444,7 +457,7 @@ contract OtcContract is Ownable {
             }
 
             // account1 한테 transfer
-            uint256 calculatedAmount0 = calculateDistributionAmount(_otc[_otcKey].amount0);
+            uint256 calculatedAmount0 = calculateDistributionAmount(_otc[_otcKey].amount0, _otc[_otcKey].account1);
             if (_otc[_otcKey].token0 == IERC20(address(0))) {
                 // native coin
                 payable(_otc[_otcKey].account1).transfer(calculatedAmount0);
@@ -559,8 +572,65 @@ contract OtcContract is Ownable {
         otcFee = _otcFee;
     }
 
-    function calculateDistributionAmount(uint256 _amount) public view returns(uint256) {
-        uint256 calculated1 = SafeMath.mul(_amount, otcFee);
+    function getVipRank(address userAddress) public view returns (uint8) {
+        uint256 stakedAmount = getGenStakingAmount(userAddress);
+
+        // VIP0: stakedAmount < 10000 * 10**uint(decimals())
+        // VIP1: stakedAmount < 100000 * 10**uint(decimals())
+        // VIP2: stakedAmount < 500000 * 10**uint(decimals())
+        // VIP3: stakedAmount < 2000000 * 10**uint(decimals())
+        // VIP4: stakedAmount < 5000000 * 10**uint(decimals())
+        // VIP5: stakedAmount 
+
+        uint8 vipRank = 0;
+        if (stakedAmount < 10000 * 10**18) {
+            // VIP0
+            vipRank = 0;
+        } else if (stakedAmount < 100000 * 10**18) {
+            // VIP1
+            vipRank = 1;
+        } else if (stakedAmount < 500000 * 10**18) {
+            // VIP2
+            vipRank = 2;
+        } else if (stakedAmount < 2000000 * 10**18) {
+            // VIP3
+            vipRank = 3;
+        } else if (stakedAmount < 5000000 * 10**18) {
+            // VIP4
+            vipRank = 4;
+        } else {
+            // VIP5
+            vipRank = 5;
+        }
+
+        return vipRank;
+    }
+
+    function calculateDistributionAmount(uint256 _amount, address userAddress) internal view returns(uint256) {
+        uint8 vipRank = getVipRank(userAddress);
+
+        // VIP0: 2% (2000)
+        // VIP1: 1.9% (1900)
+        // VIP2: 1.6% (1600)
+        // VIP3: 1.3% (1300)
+        // VIP4: 1% (1000)
+        // VIP5: 0.7% (700)
+
+        // Default: 2% (2000) 
+        uint256 changedOtcFee = otcFee;
+        if (vipRank == 1) {
+            changedOtcFee = 1900;
+        } else if (vipRank == 2) {
+            changedOtcFee = 1600;
+        } else if (vipRank == 3) {
+            changedOtcFee = 1300;
+        } else if (vipRank == 4) {
+            changedOtcFee = 1000;
+        } else if (vipRank == 5) {
+            changedOtcFee = 700;
+        }
+
+        uint256 calculated1 = SafeMath.mul(_amount, changedOtcFee);
         uint256 calculated2 = SafeMath.div(calculated1, 1000000);
 
         uint256 result = SafeMath.sub(_amount, calculated2);
@@ -575,4 +645,11 @@ contract OtcContract is Ownable {
     function recoverETH() public onlyOwner {
         payable(msg.sender).transfer(address(this).balance);
     }
+
+    /* ========== EVENTS ========== */
+    event OTCCreated(address indexed _account0, address indexed _account1, IERC20 token0, IERC20 token1, uint256 _amount0, uint256 _amount1, OTCStatus status);
+    event OTCCompleted(address indexed _account0, address indexed _account1, IERC20 token0, IERC20 token1, uint256 _amount0, uint256 _amount1, OTCStatus status);
+    event OTCCanceled(address indexed _account0, address indexed _account1, IERC20 token0, IERC20 token1, uint256 _amount0, uint256 _amount1, OTCStatus status);
+    event Recovered(address token, uint256 amount);
+    event GenStakingAddressUpdated(address contractAddress);
 }

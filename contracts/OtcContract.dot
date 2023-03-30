@@ -1,0 +1,30 @@
+strict digraph {
+  OTCCreated [shape=hexagon]
+  OTCCompleted [shape=hexagon]
+  OTCCanceled [shape=hexagon]
+  Recovered [shape=hexagon]
+  completedOtcLength [color=yellow]
+  getOtcHistory [color=yellow]
+  receive [color=brown]
+  getOtcKey [color=gray]
+  getOtcInfo [color=yellow]
+  createOtc
+  depositToken [color=brown]
+  receiveETH [color=brown]
+  distributionOtc
+  push
+  cancelOtc
+  setOtcFee
+  calculateDistributionAmount [color=yellow]
+  recoverERC20
+  safeTransfer
+  recoverETH [color=red]
+  "DEPRECATED(transfer)" [shape=rectangle]
+  createOtc -> OTCCreated
+  distributionOtc -> OTCCompleted
+  distributionOtc -> push
+  recoverERC20 -> safeTransfer
+  recoverERC20 -> Recovered
+  recoverETH -> "DEPRECATED(transfer)"
+}
+
