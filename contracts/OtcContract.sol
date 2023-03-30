@@ -619,15 +619,15 @@ contract OtcContract is Ownable {
         // Default: 2% (2000) 
         uint256 changedOtcFee = otcFee;
         if (vipRank == 1) {
-            changedOtcFee = 1900;
+            changedOtcFee = SafeMath.sub(otcFee, 100);
         } else if (vipRank == 2) {
-            changedOtcFee = 1600;
+            changedOtcFee = SafeMath.sub(otcFee, 400);
         } else if (vipRank == 3) {
-            changedOtcFee = 1300;
+            changedOtcFee = SafeMath.sub(otcFee, 700);
         } else if (vipRank == 4) {
-            changedOtcFee = 1000;
+            changedOtcFee = SafeMath.sub(otcFee, 1000);
         } else if (vipRank == 5) {
-            changedOtcFee = 700;
+            changedOtcFee = SafeMath.sub(otcFee, 1300);
         }
 
         uint256 calculated1 = SafeMath.mul(_amount, changedOtcFee);
