@@ -39,7 +39,7 @@ Let the user press the minimum number of buttons by combining the actions the us
      1. The first step is the approve step
      2. The second step is running deposit
 6. When both tokens and quantity specified by the creator are deposited, both tokens are transferred to the other party. When the last deposit quantity and tokens are confirmed, they are automatically distributed.
-7. Receive 0.3% commission from both parties. (Pile up in Escrow contract and enable Withdraw)
+7. Receive 2% commission from both parties. (Pile up in Escrow contract and enable Withdraw)
 8. Record the history.
 
 ### File Exchange Description
