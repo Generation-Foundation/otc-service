@@ -30,11 +30,11 @@ contract OtcContract is Ownable {
     // token의 0xFFfFfFffFFfffFFfFFfFFFFFffFFFffffFfFFFfF 는 File Id를 입력하겠다는 뜻이다.
 
     // decimal: 6(1000000 == 100%를 의미한다)
-    // 기본은 0.2%
+    // 기본은 2%
 
     // 파일 거래의 경우 token에 0xffff...ffff 를 입력하고 amount에 file Id(숫자)를 입력한다.
     
-    uint256 public otcFee = 2000;
+    uint256 public otcFee = 20000;
     
     struct Otc {
         uint otcType;
@@ -609,25 +609,25 @@ contract OtcContract is Ownable {
     function calculateDistributionAmount(uint256 _amount, address userAddress) internal view returns(uint256) {
         uint8 vipRank = getVipRank(userAddress);
 
-        // VIP0: 2% (2000)
-        // VIP1: 1.9% (1900)
-        // VIP2: 1.6% (1600)
-        // VIP3: 1.3% (1300)
-        // VIP4: 1% (1000)
-        // VIP5: 0.7% (700)
+        // VIP0: 2% (20000)
+        // VIP1: 1.9% (19000)
+        // VIP2: 1.6% (16000)
+        // VIP3: 1.3% (13000)
+        // VIP4: 1% (10000)
+        // VIP5: 0.7% (7000)
 
-        // Default: 2% (2000) 
+        // Default: 2% (20000) 
         uint256 changedOtcFee = otcFee;
         if (vipRank == 1) {
-            changedOtcFee = SafeMath.sub(otcFee, 100);
-        } else if (vipRank == 2) {
-            changedOtcFee = SafeMath.sub(otcFee, 400);
-        } else if (vipRank == 3) {
-            changedOtcFee = SafeMath.sub(otcFee, 700);
-        } else if (vipRank == 4) {
             changedOtcFee = SafeMath.sub(otcFee, 1000);
+        } else if (vipRank == 2) {
+            changedOtcFee = SafeMath.sub(otcFee, 4000);
+        } else if (vipRank == 3) {
+            changedOtcFee = SafeMath.sub(otcFee, 7000);
+        } else if (vipRank == 4) {
+            changedOtcFee = SafeMath.sub(otcFee, 10000);
         } else if (vipRank == 5) {
-            changedOtcFee = SafeMath.sub(otcFee, 1300);
+            changedOtcFee = SafeMath.sub(otcFee, 13000);
         }
 
         uint256 calculated1 = SafeMath.mul(_amount, changedOtcFee);
@@ -636,7 +636,7 @@ contract OtcContract is Ownable {
         uint256 result = SafeMath.sub(_amount, calculated2);
         return result;
     }
-
+    
     function recoverERC20(address token, uint amount) public onlyOwner {
         IERC20(token).safeTransfer(msg.sender, amount);
         emit Recovered(token, amount);
