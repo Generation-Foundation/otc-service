@@ -45,13 +45,13 @@ contract OtcContract is Ownable {
         IERC20 token0;
         uint amount0;
         bool deposited0;
-        bool canceled0;
+        // bool canceled0;
         
         address account1;
         IERC20 token1;
         uint amount1;
         bool deposited1;
-        bool canceled1;
+        // bool canceled1;
 
         uint256 time;
     }
@@ -393,12 +393,12 @@ contract OtcContract is Ownable {
             _otc[_otcKey].token0,
             _otc[_otcKey].amount0,
             _otc[_otcKey].deposited0,
-            _otc[_otcKey].canceled0,
+            // _otc[_otcKey].canceled0,
             _otc[_otcKey].account1,
             _otc[_otcKey].token1,
             _otc[_otcKey].amount1,
             _otc[_otcKey].deposited1,
-            _otc[_otcKey].canceled1,
+            // _otc[_otcKey].canceled1,
             _otc[_otcKey].time
         ));
 
@@ -475,8 +475,8 @@ contract OtcContract is Ownable {
         _otc[_otcKey].amount1 = 0;
         _otc[_otcKey].deposited0 = false;
         _otc[_otcKey].deposited1 = false;
-        _otc[_otcKey].canceled0 = false;
-        _otc[_otcKey].canceled1 = false;
+        // _otc[_otcKey].canceled0 = false;
+        // _otc[_otcKey].canceled1 = false;
         // ---------------------------------- 초기화 END ----------------------------------
     }
 
@@ -488,18 +488,13 @@ contract OtcContract is Ownable {
         address otcKey = getOtcKey(_account0, _account1);
 
         require(_otc[otcKey].status == OTCStatus.Pending, "OTC is not in progress.");
+        require(_otc[otcKey].status == OTCStatus.Canceled, "This OTC is already canceled.");
+
+        _otc[otcKey].status = OTCStatus.Canceled;
         
         // creator 또는 customer 중에 deposit 된 게 있는가?
         // -> 둘 다 deposit 된 경우는 complete 로 넘어가게 된다
         if (_otc[otcKey].deposited0) {
-            // 이미 cancel 된 것인가?
-            require(!_otc[otcKey].canceled0, "_account0 is already canceled.");
-
-            _otc[otcKey].canceled0 = true;
-            if (_otc[otcKey].canceled1) {
-                _otc[otcKey].status = OTCStatus.Canceled;
-            }
-
             // account0 -> token0, amount0 을 돌려준다
             if (_otc[otcKey].token0 == IERC20(address(0))) {
                 // native coin
@@ -508,25 +503,7 @@ contract OtcContract is Ownable {
                 // ERC20
                 (_otc[otcKey].token0).safeTransfer(_otc[otcKey].account0, _otc[otcKey].amount0);
             }
-
-            emit OTCCanceled(_otc[otcKey].account0, _otc[otcKey].account1, _otc[otcKey].token0, _otc[otcKey].token1, _otc[otcKey].amount0, _otc[otcKey].amount1, OTCStatus.Completed);
-
-            // 초기화
-            _otc[otcKey].amount0 = 0;
-            _otc[otcKey].amount1 = 0;
-            _otc[otcKey].deposited0 = false;
-            _otc[otcKey].deposited1 = false;
-            _otc[otcKey].canceled0 = false;
-            _otc[otcKey].canceled1 = false;
-    
         } else if (_otc[otcKey].deposited1) {
-            require(!_otc[otcKey].canceled1, "_account1 is already canceled.");
-
-            _otc[otcKey].canceled1 = true;
-            if (_otc[otcKey].canceled0) {
-                _otc[otcKey].status = OTCStatus.Canceled;
-            }
-
             // account1 -> token1, amount1 을 돌려준다
             if (_otc[otcKey].token1 == IERC20(address(0))) {
                 // native coin
@@ -535,36 +512,15 @@ contract OtcContract is Ownable {
                 // ERC20
                 (_otc[otcKey].token1).safeTransfer(_otc[otcKey].account1, _otc[otcKey].amount1);
             }
-
-            emit OTCCanceled(_otc[otcKey].account0, _otc[otcKey].account1, _otc[otcKey].token0, _otc[otcKey].token1, _otc[otcKey].amount0, _otc[otcKey].amount1, OTCStatus.Completed);
-
-            // 초기화
-            _otc[otcKey].amount0 = 0;
-            _otc[otcKey].amount1 = 0;
-            _otc[otcKey].deposited0 = false;
-            _otc[otcKey].deposited1 = false;
-            _otc[otcKey].canceled0 = false;
-            _otc[otcKey].canceled1 = false;
-
-        } else {
-            require(!_otc[otcKey].canceled0, "_account0 is already canceled.");
-            require(!_otc[otcKey].canceled1, "_account1 is already canceled.");
-
-            _otc[otcKey].canceled0 = true;
-            _otc[otcKey].canceled1 = true;
-
-            _otc[otcKey].status = OTCStatus.Canceled;
-
-            emit OTCCanceled(_otc[otcKey].account0, _otc[otcKey].account1, _otc[otcKey].token0, _otc[otcKey].token1, _otc[otcKey].amount0, _otc[otcKey].amount1, OTCStatus.Completed);
-        
-            // 초기화
-            _otc[otcKey].amount0 = 0;
-            _otc[otcKey].amount1 = 0;
-            _otc[otcKey].deposited0 = false;
-            _otc[otcKey].deposited1 = false;
-            _otc[otcKey].canceled0 = false;
-            _otc[otcKey].canceled1 = false;
         }
+
+        emit OTCCanceled(_otc[otcKey].account0, _otc[otcKey].account1, _otc[otcKey].token0, _otc[otcKey].token1, _otc[otcKey].amount0, _otc[otcKey].amount1, OTCStatus.Completed);
+        
+        // 초기화
+        _otc[otcKey].amount0 = 0;
+        _otc[otcKey].amount1 = 0;
+        _otc[otcKey].deposited0 = false;
+        _otc[otcKey].deposited1 = false;
     }
 
     function setOtcFee(uint256 _otcFee) public onlyOwner {
