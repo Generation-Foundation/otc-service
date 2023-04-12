@@ -488,7 +488,6 @@ contract OtcContract is Ownable {
         address otcKey = getOtcKey(_account0, _account1);
 
         require(_otc[otcKey].status == OTCStatus.Pending, "OTC is not in progress.");
-        require(_otc[otcKey].status == OTCStatus.Canceled, "This OTC is already canceled.");
 
         _otc[otcKey].status = OTCStatus.Canceled;
         
