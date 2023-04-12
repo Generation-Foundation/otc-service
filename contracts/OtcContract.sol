@@ -228,8 +228,9 @@ contract OtcContract is Ownable {
                 require(_otc[otcKey].token0 == _depositToken, "OTC token0 does not match.");
                 require(_otc[otcKey].amount0 == _depositAmount, "OTC amount0 does not match.");
                 
-                IERC20(_otc[otcKey].token0).transferFrom(msg.sender, address(this), _depositAmount);
                 _otc[otcKey].deposited0 = true;
+                IERC20(_otc[otcKey].token0).transferFrom(msg.sender, address(this), _depositAmount);
+                
                 if (_otc[otcKey].deposited1) {
                     distributionOtc(otcKey);
                 }
@@ -241,10 +242,9 @@ contract OtcContract is Ownable {
                 require(_otc[otcKey].token1 == _depositToken, "OTC token1 does not match.");
                 require(_otc[otcKey].amount1 == _depositAmount, "OTC amount1 does not match.");
 
+                _otc[otcKey].deposited1 = true; 
                 IERC20(_otc[otcKey].token1).transferFrom(msg.sender, address(this), _depositAmount);
 
-                // TODO: 이 코드가 transferFrom 보다 위에 가야함
-                _otc[otcKey].deposited1 = true; 
                 if (_otc[otcKey].deposited0) {
                     distributionOtc(otcKey);
                 }
@@ -267,12 +267,13 @@ contract OtcContract is Ownable {
                 require(_otc[otcKey].token0 == _depositToken, "OTC token0 does not match.");
                 require(_otc[otcKey].amount0 == _depositAmount, "OTC amount0 does not match.");
 
+                _otc[otcKey].deposited0 = true;
+
                 // 파일 거래일 때 token 에 0xFFfFfFffFFfffFFfFFfFFFFFffFFFffffFfFFFfF 가 입력된 경우에는 transferFrom을 하지 않는다.
                 if (_otc[otcKey].token0 != IERC20(address(0xFFfFfFffFFfffFFfFFfFFFFFffFFFffffFfFFFfF))) {
                     IERC20(_otc[otcKey].token0).transferFrom(msg.sender, address(this), _depositAmount);
                 }
                 
-                _otc[otcKey].deposited0 = true;
                 if (_otc[otcKey].deposited1) {
                     distributionOtc(otcKey);
                 }
@@ -284,11 +285,12 @@ contract OtcContract is Ownable {
                 require(_otc[otcKey].token1 == _depositToken, "OTC token1 does not match.");
                 require(_otc[otcKey].amount1 == _depositAmount, "OTC amount1 does not match.");
 
+                _otc[otcKey].deposited1 = true;
+
                 if (_otc[otcKey].token1 != IERC20(address(0xFFfFfFffFFfffFFfFFfFFFFFffFFFffffFfFFFfF))) {
                     IERC20(_otc[otcKey].token1).transferFrom(msg.sender, address(this), _depositAmount);
                 }
 
-                _otc[otcKey].deposited1 = true;
                 if (_otc[otcKey].deposited0) {
                     distributionOtc(otcKey);
                 }
@@ -477,8 +479,6 @@ contract OtcContract is Ownable {
         _otc[_otcKey].amount1 = 0;
         _otc[_otcKey].deposited0 = false;
         _otc[_otcKey].deposited1 = false;
-        // _otc[_otcKey].canceled0 = false;
-        // _otc[_otcKey].canceled1 = false;
         // ---------------------------------- 초기화 END ----------------------------------
     }
 
@@ -490,7 +490,6 @@ contract OtcContract is Ownable {
         address otcKey = getOtcKey(_account0, _account1);
 
         require(_otc[otcKey].status == OTCStatus.Pending, "OTC is not in progress.");
-        // require(_otc[otcKey].status == OTCStatus.Canceled, "This OTC is already canceled.");
 
         _otc[otcKey].status = OTCStatus.Canceled;
         
