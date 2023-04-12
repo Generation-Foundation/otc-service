@@ -242,7 +242,9 @@ contract OtcContract is Ownable {
                 require(_otc[otcKey].amount1 == _depositAmount, "OTC amount1 does not match.");
 
                 IERC20(_otc[otcKey].token1).transferFrom(msg.sender, address(this), _depositAmount);
-                _otc[otcKey].deposited1 = true;
+
+                // TODO: 이 코드가 transferFrom 보다 위에 가야함
+                _otc[otcKey].deposited1 = true; 
                 if (_otc[otcKey].deposited0) {
                     distributionOtc(otcKey);
                 }
@@ -488,6 +490,7 @@ contract OtcContract is Ownable {
         address otcKey = getOtcKey(_account0, _account1);
 
         require(_otc[otcKey].status == OTCStatus.Pending, "OTC is not in progress.");
+        // require(_otc[otcKey].status == OTCStatus.Canceled, "This OTC is already canceled.");
 
         _otc[otcKey].status = OTCStatus.Canceled;
         
@@ -528,36 +531,39 @@ contract OtcContract is Ownable {
     }
 
     function getVipRank(address userAddress) public view returns (uint8) {
-        uint256 stakedAmount = getGenStakingAmount(userAddress);
-
-        // VIP0: stakedAmount < 10000 * 10**uint(decimals())
-        // VIP1: stakedAmount < 100000 * 10**uint(decimals())
-        // VIP2: stakedAmount < 500000 * 10**uint(decimals())
-        // VIP3: stakedAmount < 2000000 * 10**uint(decimals())
-        // VIP4: stakedAmount < 5000000 * 10**uint(decimals())
-        // VIP5: stakedAmount 
-
         uint8 vipRank = 0;
-        if (stakedAmount < 10000 * 10**18) {
-            // VIP0
-            vipRank = 0;
-        } else if (stakedAmount < 100000 * 10**18) {
-            // VIP1
-            vipRank = 1;
-        } else if (stakedAmount < 500000 * 10**18) {
-            // VIP2
-            vipRank = 2;
-        } else if (stakedAmount < 2000000 * 10**18) {
-            // VIP3
-            vipRank = 3;
-        } else if (stakedAmount < 5000000 * 10**18) {
-            // VIP4
-            vipRank = 4;
-        } else {
-            // VIP5
-            vipRank = 5;
-        }
 
+        if (genStakingContractAddress != address(0)) {
+            uint256 stakedAmount = getGenStakingAmount(userAddress);
+
+            // VIP0: stakedAmount < 10000 * 10**uint(decimals())
+            // VIP1: stakedAmount < 100000 * 10**uint(decimals())
+            // VIP2: stakedAmount < 500000 * 10**uint(decimals())
+            // VIP3: stakedAmount < 2000000 * 10**uint(decimals())
+            // VIP4: stakedAmount < 5000000 * 10**uint(decimals())
+            // VIP5: stakedAmount 
+
+            if (stakedAmount < 10000 * 10**18) {
+                // VIP0
+                vipRank = 0;
+            } else if (stakedAmount < 100000 * 10**18) {
+                // VIP1
+                vipRank = 1;
+            } else if (stakedAmount < 500000 * 10**18) {
+                // VIP2
+                vipRank = 2;
+            } else if (stakedAmount < 2000000 * 10**18) {
+                // VIP3
+                vipRank = 3;
+            } else if (stakedAmount < 5000000 * 10**18) {
+                // VIP4
+                vipRank = 4;
+            } else {
+                // VIP5
+                vipRank = 5;
+            }
+        }
+        
         return vipRank;
     }
 
