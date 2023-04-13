@@ -397,12 +397,10 @@ contract OtcContract is Ownable {
             _otc[_otcKey].token0,
             _otc[_otcKey].amount0,
             _otc[_otcKey].deposited0,
-            // _otc[_otcKey].canceled0,
             _otc[_otcKey].account1,
             _otc[_otcKey].token1,
             _otc[_otcKey].amount1,
             _otc[_otcKey].deposited1,
-            // _otc[_otcKey].canceled1,
             _otc[_otcKey].time
         ));
 
