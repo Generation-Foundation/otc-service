@@ -522,7 +522,7 @@ contract OtcContract is Ownable {
         _otc[otcKey].deposited1 = false;
     }
 
-    function setOtcFee(uint256 _otcFee) public onlyOwner {
+    function setOtcFee(uint256 _otcFee) onlyOwner public {
         require(_otcFee > 0 && _otcFee <= 1000000, "Invalid OTC Fee(_otcFee > 0 && _otcFee <= 1000000, 1000000 == 100%)");
         otcFee = _otcFee;
     }
@@ -595,12 +595,12 @@ contract OtcContract is Ownable {
         return result;
     }
     
-    function recoverERC20(address token, uint amount) public onlyOwner {
+    function recoverERC20(address token, uint amount) onlyOwner public {
         IERC20(token).safeTransfer(msg.sender, amount);
         emit Recovered(token, amount);
     }
 
-    function recoverETH() public onlyOwner {
+    function recoverETH() onlyOwner public {
         payable(msg.sender).transfer(address(this).balance);
     }
 
