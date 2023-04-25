@@ -54,6 +54,8 @@ contract OtcContract is Ownable {
         // bool canceled1;
 
         uint256 time;
+
+        address referralAccount;
     }
 
     mapping(address => Otc) private _otc;
@@ -66,6 +68,8 @@ contract OtcContract is Ownable {
     function getOtcHistory(uint256 _index) public view returns (Otc memory) {
         return _completedOtc[_index];
     }
+
+    // 
 
     // 파일 거래 완료된 것 기록(key: file ID)
     // key: fild ID, value: 구매자 주소
@@ -133,7 +137,8 @@ contract OtcContract is Ownable {
         IERC20,
         uint,
         bool,
-        uint256
+        uint256,
+        address
     ) {
         require(_account0 != address(0), "_account0 should not be address(0).");
         require(_account1 != address(0), "_account1 should not be address(0).");
@@ -151,7 +156,8 @@ contract OtcContract is Ownable {
             _otc[otcKey].token1,
             _otc[otcKey].amount1,
             _otc[otcKey].deposited1,
-            _otc[otcKey].time
+            _otc[otcKey].time,
+            _otc[otcKey].referralAccount
         );
     }
 
@@ -401,7 +407,8 @@ contract OtcContract is Ownable {
             _otc[_otcKey].token1,
             _otc[_otcKey].amount1,
             _otc[_otcKey].deposited1,
-            _otc[_otcKey].time
+            _otc[_otcKey].time,
+            _otc[_otcKey].referralAccount
         ));
 
         // file OTC인가?: _completedFileOtc 기록
@@ -473,8 +480,8 @@ contract OtcContract is Ownable {
         // ---------------------------------- 자동 claim END ----------------------------------
 
         // ---------------------------------- 초기화 START ----------------------------------
-        _otc[_otcKey].amount0 = 0;
-        _otc[_otcKey].amount1 = 0;
+        // _otc[_otcKey].amount0 = 0;
+        // _otc[_otcKey].amount1 = 0;
         _otc[_otcKey].deposited0 = false;
         _otc[_otcKey].deposited1 = false;
         // ---------------------------------- 초기화 END ----------------------------------
@@ -516,8 +523,8 @@ contract OtcContract is Ownable {
         emit OTCCanceled(_otc[otcKey].account0, _otc[otcKey].account1, _otc[otcKey].token0, _otc[otcKey].token1, _otc[otcKey].amount0, _otc[otcKey].amount1, OTCStatus.Completed);
         
         // 초기화
-        _otc[otcKey].amount0 = 0;
-        _otc[otcKey].amount1 = 0;
+        // _otc[otcKey].amount0 = 0;
+        // _otc[otcKey].amount1 = 0;
         _otc[otcKey].deposited0 = false;
         _otc[otcKey].deposited1 = false;
     }
